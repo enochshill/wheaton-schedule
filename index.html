@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wheaton Schedule Builder · Fall 2026</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Schedule Builder <span class="term">Fall 2026</span></h1>
+    <span id="schedule-summary" class="schedule-summary"></span>
+    <button id="view-toggle" class="clear-btn" type="button">Final exams</button>
+    <button id="clear-btn" class="clear-btn" type="button">Clear all</button>
+    <span class="disclaimer">Verify in Banner before registering</span>
+  </header>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="search-block">
+        <input id="query" type="search" placeholder="Search code, title, or keyword…" autocomplete="off">
+        <div class="filters">
+          <select id="dept-filter" title="Department">
+            <option value="ALL">All depts</option>
+          </select>
+          <select id="quad-filter" title="Quad / term length">
+            <option value="ALL">Any quad</option>
+            <option value="A">A quad only</option>
+            <option value="B">B quad only</option>
+            <option value="FULL">Full semester only</option>
+          </select>
+          <select id="tag-filter" title="Attribute / tag (e.g. SHAR, AAQR)">
+            <option value="ALL">Any tag</option>
+          </select>
+          <select id="credits-filter" title="Credits">
+            <option value="ALL">Any credits</option>
+          </select>
+          <select id="start-filter" title="Starts at">
+            <option value="">Any start time</option>
+          </select>
+          <label class="checkbox" title="Hide unscheduled / TBA classes">
+            <input id="hide-tba" type="checkbox">
+            Hide TBA
+          </label>
+        </div>
+        <div id="result-count" class="result-count"></div>
+      </div>
+      <ul id="results" class="results"></ul>
+    </aside>
+
+    <main class="main">
+      <div id="conflict-banner" class="conflict-banner hidden" aria-live="polite"></div>
+      <div id="finals-legend" class="finals-legend hidden"></div>
+      <div class="calendar-wrap">
+        <div id="calendar" class="calendar"></div>
+      </div>
+      <div id="unscheduled-tray" class="unscheduled-tray hidden">
+        <h3>Unscheduled (TBA)</h3>
+        <ul id="unscheduled-list"></ul>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
