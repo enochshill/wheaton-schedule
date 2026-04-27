@@ -248,13 +248,58 @@ html, body {
   background: var(--conflict-soft);
   border: 1px solid var(--conflict);
   color: var(--conflict);
-  padding: 6px 10px;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
   flex-shrink: 0;
+  overflow: hidden;
 }
 .conflict-banner.hidden { display: none; }
+.conflict-banner details summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 6px 10px;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.conflict-banner details summary::-webkit-details-marker { display: none; }
+.conflict-banner details summary::after {
+  content: "▸";
+  margin-left: auto;
+  font-size: 10px;
+  transition: transform 0.15s;
+}
+.conflict-banner details[open] summary::after { transform: rotate(90deg); }
+.conflict-banner .cf-hint {
+  font-weight: 400;
+  font-size: 11px;
+  opacity: 0.7;
+}
+.conflict-banner ul {
+  margin: 0;
+  padding: 4px 10px 8px 26px;
+  font-weight: 400;
+  list-style: disc;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+.conflict-banner li { margin-bottom: 3px; }
+.conflict-banner .cf-day {
+  display: inline-block;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  margin-right: 6px;
+  white-space: nowrap;
+}
+.conflict-banner .cf-time {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+  font-size: 11px;
+}
 
 .finals-legend {
   display: flex;
@@ -327,11 +372,18 @@ html, body {
   color: var(--muted);
   text-align: center;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  line-height: 1.1;
 }
 .cal-corner { border-right: 1px solid var(--border); }
 .cal-day-head { border-left: 1px solid var(--border); }
+.cal-day-head .cdh-secondary {
+  font-weight: 400;
+  font-size: 10px;
+  opacity: 0.7;
+}
 
 .cal-time-col,
 .cal-day-col {
@@ -481,4 +533,56 @@ html, body {
   background: transparent;
   border: none;
   color: var(--muted);
+}
+
+/* --- Responsive: phones / tablets ------------------------------------- */
+
+@media (max-width: 720px) {
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--topbar-h);
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  .topbar h1 { font-size: 14px; }
+  .schedule-summary { font-size: 11px; }
+  .disclaimer { display: none; }
+
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 8px;
+    padding: 8px;
+    height: auto;
+    min-height: calc(100vh - var(--topbar-h));
+  }
+  .sidebar {
+    max-height: 50vh;
+  }
+  .main {
+    min-height: 60vh;
+  }
+  .filters { gap: 4px; }
+  .filters select {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+  /* Tighter time gutter on small screens. The .finals class is toggled in
+     renderCalendar() so we can target the right column count. */
+  .calendar.finals { grid-template-columns: 36px repeat(4, 1fr) !important; }
+  .calendar:not(.finals) { grid-template-columns: 36px repeat(5, 1fr) !important; }
+}
+
+@media (max-width: 480px) {
+  .cal-day-head { font-size: 10px; }
+  .cal-day-head .cdh-secondary { display: none; }
+  .cal-block {
+    font-size: 9px;
+    padding: 1px 3px;
+    border-left-width: 2px;
+  }
+  .cal-block .b-title { display: none; }
+  .cal-block .b-time { font-size: 8px; }
+  .cal-hour-label { font-size: 9px; }
 }

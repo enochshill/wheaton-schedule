@@ -245,20 +245,57 @@ function expandToBlocks(classes) {
 }
 
 function findConflicts(blocks) {
-  // O(n^2) over blocks — n is small (a student has ~5–8 classes).
-  // Two blocks conflict only if same day, overlapping times, AND their
-  // quads share semester time (A vs B never conflict).
-  const conflicts = [];
-  for (let i = 0; i < blocks.length; i++) {
-    for (let j = i + 1; j < blocks.length; j++) {
+  // Returns deduped conflict entries: [{ days: ["T","R"], classes: [block, ...] }]
+  // Same set of classes conflicting on multiple days collapses to one entry.
+  // Avoids both the C(n,2) pair-explosion AND the per-day duplicates a TR
+  // class pair would otherwise produce.
+  const n = blocks.length;
+  const adj = Array.from({ length: n }, () => []);
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
       const a = blocks[i], b = blocks[j];
       if (a.day !== b.day) continue;
       if (a.startMin >= b.endMin || b.startMin >= a.endMin) continue;
       if (!quadsOverlap(a.quad, b.quad)) continue;
-      conflicts.push({ a, b });
+      adj[i].push(j);
+      adj[j].push(i);
     }
   }
-  return conflicts;
+  // Per-day connected components.
+  const seen = new Array(n).fill(false);
+  const dayClusters = [];
+  for (let i = 0; i < n; i++) {
+    if (seen[i] || adj[i].length === 0) continue;
+    const stack = [i];
+    const comp = [];
+    while (stack.length) {
+      const v = stack.pop();
+      if (seen[v]) continue;
+      seen[v] = true;
+      comp.push(blocks[v]);
+      for (const u of adj[v]) if (!seen[u]) stack.push(u);
+    }
+    if (comp.length >= 2) dayClusters.push(comp);
+  }
+  // Group day-clusters that share the same set of class IDs.
+  const allDays = state.view === "finals" ? FINALS_DAYS : DAYS;
+  const byKey = new Map();
+  for (const cluster of dayClusters) {
+    const ids = [...new Set(cluster.map(b => b.classId))].sort();
+    const key = ids.join("|");
+    if (!byKey.has(key)) {
+      byKey.set(key, { ids, days: new Set(), blockByClass: new Map() });
+    }
+    const entry = byKey.get(key);
+    entry.days.add(cluster[0].day);
+    for (const b of cluster) {
+      if (!entry.blockByClass.has(b.classId)) entry.blockByClass.set(b.classId, b);
+    }
+  }
+  return [...byKey.values()].map(e => ({
+    days: [...e.days].sort((a, b) => allDays.indexOf(a) - allDays.indexOf(b)),
+    classes: e.ids.map(id => e.blockByClass.get(id)),
+  }));
 }
 
 function blocksWithLayout(blocks) {
@@ -428,7 +465,12 @@ function renderCalendar() {
   for (const d of days) {
     const head = document.createElement("div");
     head.className = "cal-day-head";
-    head.textContent = labels[d];
+    const parts = labels[d].split(" · ");
+    if (parts.length === 2) {
+      head.innerHTML = `<span class="cdh-primary">${escapeHtml(parts[0])}</span><span class="cdh-secondary">${escapeHtml(parts[1])}</span>`;
+    } else {
+      head.textContent = labels[d];
+    }
     cal.appendChild(head);
   }
 
@@ -512,29 +554,29 @@ function renderConflictBanner() {
   const isFinals = state.view === "finals";
   const selected = [...state.selectedIds].map(id => state.byId.get(id)).filter(Boolean);
   const blocks = isFinals ? expandToFinalsBlocks(selected) : expandToBlocks(selected);
-  const conflicts = findConflicts(blocks);
-  if (conflicts.length === 0) {
+  const clusters = findConflicts(blocks);
+  if (clusters.length === 0) {
     banner.classList.add("hidden");
     banner.innerHTML = "";
     return;
   }
   banner.classList.remove("hidden");
-  const items = conflicts.map(({ a, b }) => {
-    const overlapStart = Math.max(a.startMin, b.startMin);
-    const overlapEnd = Math.min(a.endMin, b.endMin);
-    const dayLabel = isFinals ? FINALS_DAY_LABELS[a.day] : DAY_LABELS[a.day];
-    return `<li>
-      <strong>${escapeHtml(a.code)}</strong> &harr;
-      <strong>${escapeHtml(b.code)}</strong>
-      on ${escapeHtml(dayLabel)} ${escapeHtml(minToStr(overlapStart))}–${escapeHtml(minToStr(overlapEnd))}
-    </li>`;
+  // Preserve open/closed state across re-renders.
+  const wasOpen = banner.querySelector("details")?.open ?? false;
+  const items = clusters.map(entry => {
+    const days = entry.days.map(d => DAY_LABELS[d]).join(", ");
+    const parts = entry.classes.map(b =>
+      `<strong>${escapeHtml(b.code)}</strong> <span class="cf-time">${escapeHtml(minToStr(b.startMin))}–${escapeHtml(minToStr(b.endMin))}</span>`
+    ).join(" &harr; ");
+    return `<li><span class="cf-day">${escapeHtml(days)}</span> ${parts}</li>`;
   }).join("");
-  const heading = isFinals
-    ? `⚠ ${conflicts.length} exam conflict${conflicts.length === 1 ? "" : "s"} detected:`
-    : `⚠ ${conflicts.length} time conflict${conflicts.length === 1 ? "" : "s"} detected:`;
+  const noun = isFinals ? "exam conflict" : "time conflict";
+  const heading = `⚠ ${clusters.length} ${noun}${clusters.length === 1 ? "" : "s"}`;
   banner.innerHTML = `
-    <div>${heading}</div>
-    <ul>${items}</ul>
+    <details${wasOpen ? " open" : ""}>
+      <summary>${heading} <span class="cf-hint">click for details</span></summary>
+      <ul>${items}</ul>
+    </details>
   `;
 }
 
