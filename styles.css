@@ -1,21 +1,21 @@
 :root {
-  --bg: #f6f7f9;
+  --bg: #eef2fa;
   --panel: #ffffff;
-  --border: #d9dde3;
-  --text: #1a1f2b;
-  --muted: #6c7385;
-  --accent: #1d4ed8;
-  --accent-soft: #e0e7ff;
+  --border: #c5cfe8;
+  --text: #111827;
+  --muted: #5b6fa6;
+  --accent: #f47321;         /* Wheaton orange */
+  --accent-soft: #fef0e7;    /* light orange */
   --conflict: #dc2626;
   --conflict-soft: #fee2e2;
-  --hour-line: #ebedf1;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --hour-line: #e2e9f5;
+  --shadow: 0 1px 3px rgba(0, 53, 148, 0.08);
   --topbar-h: 40px;
   /* quad accents */
-  --quad-a: #b45309;        /* amber-700 */
-  --quad-a-soft: #fef3c7;   /* amber-100 */
-  --quad-b: #0f766e;        /* teal-700 */
-  --quad-b-soft: #ccfbf1;   /* teal-100 */
+  --quad-a: #c05000;         /* dark orange — A quad */
+  --quad-a-soft: #fef3e5;
+  --quad-b: #003594;         /* Wheaton blue — B quad */
+  --quad-b-soft: #ddeeff;
 }
 
 * { box-sizing: border-box; }
@@ -34,32 +34,43 @@ html, body {
   gap: 12px;
   height: var(--topbar-h);
   padding: 0 16px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
+  background: #003594;
+  border-bottom: 2px solid var(--accent);
 }
 .topbar h1 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
+  color: #ffffff;
 }
 .term {
   margin-left: 6px;
   padding: 2px 8px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
 }
 .schedule-summary {
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 12px;
   margin-left: 8px;
 }
 .disclaimer {
   margin-left: auto;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.5);
   font-size: 11px;
+}
+.topbar .clear-btn {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+}
+.topbar .clear-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.7);
+  filter: none;
 }
 
 /* --- App layout: sidebar + main calendar -------------------------------- */
@@ -116,7 +127,7 @@ html, body {
   padding: 4px 6px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: white;
+  background: var(--panel);
   font-size: 12px;
   min-width: 0;
 }
@@ -130,7 +141,7 @@ html, body {
   padding: 4px 22px 4px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: white;
+  background: var(--panel);
   font-size: 12px;
   user-select: none;
   white-space: nowrap;
@@ -160,7 +171,7 @@ html, body {
   min-width: 200px;
   max-height: 280px;
   overflow-y: auto;
-  background: white;
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 6px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
@@ -313,7 +324,7 @@ html, body {
   cursor: not-allowed;
 }
 .clear-btn {
-  background: white;
+  background: var(--panel);
   color: var(--text);
   border-color: var(--border);
 }
@@ -510,7 +521,7 @@ html, body {
   line-height: 1.2;
   overflow: hidden;
   cursor: pointer;
-  color: #1e3a8a;
+  color: #7a3000;
 }
 .cal-block:hover { filter: brightness(0.96); }
 .cal-block .b-code {
@@ -537,13 +548,13 @@ html, body {
   background: var(--quad-a-soft);
   border-color: var(--quad-a);
   border-left-color: var(--quad-a);
-  color: #78350f;
+  color: #5c2400;
 }
 .cal-block.quad-b {
   background: var(--quad-b-soft);
   border-color: var(--quad-b);
   border-left-color: var(--quad-b);
-  color: #134e4a;
+  color: #001d5c;
 }
 .cal-block .b-quad {
   display: inline-block;
@@ -560,7 +571,7 @@ html, body {
   border-color: var(--conflict);
   border-left-color: var(--conflict);
   background: var(--conflict-soft);
-  color: #7f1d1d;
+  color: #7f1d1d;  /* keep red on red-soft for conflict */
 }
 
 .unscheduled-tray {
