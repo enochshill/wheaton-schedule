@@ -42,11 +42,39 @@ The finals exam grid is non-obvious — codes 6/7/E share Thu 1:30–3:30, A/B s
 
 The semester is split into A quad (first half), B quad (second half), and full-semester. `quadsOverlap(a, b)` encodes that A vs B never conflict (different halves of the semester) but FULL overlaps with both. Two passes run on every render:
 
-- `findConflicts(blocks)` — drives the warning banner. O(n²) but n is small.
+- `findConflicts(blocks)` — drives the warning banner. Returns **deduped entries** (`{days: [...], classes: [...]}`), not pairs: connected components by per-day overlap, then collapsed across days by class-set so a TR pair conflicting on Tue *and* Thu reports as one entry. Avoids the C(n,2) pair-explosion when 3+ classes overlap.
 - `blocksWithLayout(blocks)` — sweeps each day chronologically, assigns column indices to overlapping blocks for side-by-side layout, but only flags blocks with `.conflict` when the quad-overlap is real (so A vs B classes render side-by-side without the red treatment).
 
-In finals view, all blocks use `quad: "FULL"` so any time-overlap counts as a real exam conflict.
+In finals view, all blocks use `quad: "FULL"` so any time-overlap counts as a real exam conflict. Banner is a `<details>` element so it can be collapsed and won't push the calendar off-screen.
+
+### Filters and the multi-filter pattern
+
+Most filters are multi-select via a shared `renderMultiFilter(wrap, options, selectedSet, singularLabel)` helper. Each builds a `<details>` dropdown with checkboxes; the `selectedSet` is a `Set` on `state` that the checkboxes mutate directly. Currently multi: `filterDepts`, `filterTags`, `filterSlots`, `filterCreditBuckets`. Quad is still single-select.
+
+Two filters use **bucketing** instead of raw values, so a long tail of rare values doesn't bloat the dropdown:
+
+- `TIME_SLOTS` — the 9 standard period start times (MWF 8:00/9:20/11:35/12:55/2:15, TR 7:30/8:30/11:15/1:15) plus an "Evening" bucket (≥17:00) and an `OTHER_SLOT_ID` catch-all. A class matches a slot if any of its meetings does.
+- `CREDIT_BUCKETS` — 0/1/2/3/4 plus "Variable" (anything with `TO`/`OR`) plus `OTHER_CREDIT_ID` (0.5, 5, 8, 9). Variable-credit classes do **not** match the "4 credits" bucket even when their range includes 4 — variable is treated as materially different.
 
 ### Calendar layout
 
-The calendar grid is CSS Grid with percent-based block positioning (`pctTop()`, height percentages). The number of day columns is set via inline `gridTemplateColumns` in `renderCalendar()`. Range is fixed: `CAL_START_MIN` (8 AM) to `CAL_END_MIN` (10 PM).
+The calendar grid is CSS Grid with percent-based block positioning (`pctTop()`, height percentages). The number of day columns is set via inline `gridTemplateColumns` in `renderCalendar()` (overridden by the `.finals` class on small screens via media queries). Range is fixed: `CAL_START_MIN` (8 AM) to `CAL_END_MIN` (10 PM).
+
+### Responsive layout
+
+Two breakpoints in `styles.css`:
+
+- **≤720 px**: sidebar stacks above the calendar (capped at 50vh, internal scroll), topbar wraps and hides the disclaimer, filter row wraps two-per-row.
+- **≤480 px**: day-head dates hide (just "Mon"), block titles hide (code + time only), tighter padding.
+
+The finals day labels use a `Mon · Dec 14` format that's split into `.cdh-primary` / `.cdh-secondary` spans so the date can be hidden separately on phones.
+
+## Deployment
+
+Live at <https://enochshill.github.io/wheaton-schedule/>, served as a static site by GitHub Pages from the `main` branch root. Pushing to `main` auto-rebuilds within ~1 minute. Tags like `v1.0` mark releases.
+
+`index.html` imports `app.js` via a dynamic `import()` with a `Date.now()` query string so browsers don't cache stale JS across deploys. `app.js` itself fetches `classes.json` with the same trick.
+
+### WSL git gotcha
+
+Native Linux `git` on this `/mnt/c/...` path fails (`chmod on .git/config.lock failed`) because the 9p mount maps everything to `uid=0`. Use the Windows-side binary instead — every git invocation in this repo should go through `"/mnt/c/Program Files/Git/cmd/git.exe"`. It also bundles Git Credential Manager so HTTPS pushes pop a Windows browser prompt rather than failing on missing creds.
