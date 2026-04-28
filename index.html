@@ -20,24 +20,16 @@
       <div class="search-block">
         <input id="query" type="search" placeholder="Search code, title, or keyword…" autocomplete="off">
         <div class="filters">
-          <select id="dept-filter" title="Department">
-            <option value="ALL">All depts</option>
-          </select>
+          <div id="dept-filter" class="multi-filter-wrap" title="Department"></div>
           <select id="quad-filter" title="Quad / term length">
             <option value="ALL">Any quad</option>
             <option value="A">A quad only</option>
             <option value="B">B quad only</option>
             <option value="FULL">Full semester only</option>
           </select>
-          <select id="tag-filter" title="Attribute / tag (e.g. SHAR, AAQR)">
-            <option value="ALL">Any tag</option>
-          </select>
-          <select id="credits-filter" title="Credits">
-            <option value="ALL">Any credits</option>
-          </select>
-          <select id="start-filter" title="Starts at">
-            <option value="">Any start time</option>
-          </select>
+          <div id="tag-filter" class="multi-filter-wrap" title="Attribute / tag (e.g. SHAR, AAQR)"></div>
+          <div id="credits-filter" class="multi-filter-wrap" title="Credits"></div>
+          <div id="start-filter" class="multi-filter-wrap" title="Standard time slot"></div>
           <label class="checkbox" title="Hide unscheduled / TBA classes">
             <input id="hide-tba" type="checkbox">
             Hide TBA
@@ -61,6 +53,9 @@
     </main>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module">
+    // Cache-bust the app module so refreshes always pick up new code.
+    import(`./app.js?v=${Date.now()}`);
+  </script>
 </body>
 </html>

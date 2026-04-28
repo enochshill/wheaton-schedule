@@ -84,7 +84,6 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: var(--shadow);
-  overflow: hidden;
 }
 
 .search-block {
@@ -120,6 +119,92 @@ html, body {
   background: white;
   font-size: 12px;
   min-width: 0;
+}
+
+/* Multi-select dropdown — used for tag and start-time filters. */
+.multi-filter-wrap { position: relative; }
+.multi-filter { position: relative; }
+.multi-filter-btn {
+  list-style: none;
+  cursor: pointer;
+  padding: 4px 22px 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+  font-size: 12px;
+  user-select: none;
+  white-space: nowrap;
+  position: relative;
+  display: inline-block;
+}
+.multi-filter-btn::-webkit-details-marker { display: none; }
+.multi-filter-btn::after {
+  content: "▾";
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  color: var(--muted);
+}
+.multi-filter[open] .multi-filter-btn {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
+  outline-offset: -1px;
+}
+.multi-filter-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 200px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  padding: 4px;
+}
+.multi-filter-menu .mf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+.multi-filter-menu .mf-clear {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.multi-filter-menu .mf-clear:hover { text-decoration: underline; }
+.multi-filter-menu .mf-opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.multi-filter-menu .mf-opt:hover { background: var(--bg); }
+.multi-filter-menu .mf-opt input { margin: 0; }
+.multi-filter-menu .mf-name { flex: 1; font-variant-numeric: tabular-nums; }
+.multi-filter-menu .mf-count {
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }
 .filters .checkbox {
   display: inline-flex;

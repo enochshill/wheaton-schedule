@@ -56,11 +56,11 @@ const state = {
   classes: [],
   byId: new Map(),
   query: "",
-  filterDept: "ALL",
+  filterDepts: new Set(),
   filterQuad: "ALL",
-  filterTag: "ALL",
-  filterCredits: "ALL",
-  filterStartAt: "",
+  filterTags: new Set(),
+  filterCreditBuckets: new Set(),
+  filterSlots: new Set(),
   hideTBA: false,
   selectedIds: new Set(),
   view: "weekly",  // "weekly" | "finals"
@@ -109,6 +109,73 @@ function quadsOverlap(qA, qB) {
   if (qA === "A" && qB === "B") return false;
   if (qA === "B" && qB === "A") return false;
   return true;
+}
+
+// --- Credits filter ----------------------------------------------------
+
+const CREDIT_BUCKETS = [
+  { id: "0", label: "0 credits",  test: v => v === "0" },
+  { id: "1", label: "1 credit",   test: v => v === "1" },
+  { id: "2", label: "2 credits",  test: v => v === "2" },
+  { id: "3", label: "3 credits",  test: v => v === "3" },
+  { id: "4", label: "4 credits",  test: v => v === "4" },
+  { id: "variable", label: "Variable (e.g. 2 TO 4)", test: v => /\b(TO|OR)\b/i.test(v) },
+];
+const OTHER_CREDIT_ID = "other";
+
+function classMatchesAnyCreditBucket(c, ids) {
+  const v = c.credits || "";
+  if (!v) return false;
+  for (const id of ids) {
+    if (id === OTHER_CREDIT_ID) {
+      if (!CREDIT_BUCKETS.some(b => b.test(v))) return true;
+    } else {
+      const b = CREDIT_BUCKETS.find(x => x.id === id);
+      if (b && b.test(v)) return true;
+    }
+  }
+  return false;
+}
+
+// --- Time-slot filter --------------------------------------------------
+
+// Standard undergrad meeting times (from the period-codes appendix). The
+// filter dropdown shows these by name; non-matching meeting times collapse
+// into a single "Other times" bucket.
+function meetingIsMWF(m) {
+  return m.days.length > 0 && m.days.every(d => "MWF".includes(d));
+}
+function meetingIsTR(m) {
+  return m.days.length > 0 && m.days.every(d => "TR".includes(d));
+}
+const TIME_SLOTS = [
+  { id: "mwf-1", label: "MWF 8:00 AM",  test: m => meetingIsMWF(m) && m.start === "08:00" },
+  { id: "mwf-2", label: "MWF 9:20 AM",  test: m => meetingIsMWF(m) && m.start === "09:20" },
+  { id: "mwf-3", label: "MWF 11:35 AM", test: m => meetingIsMWF(m) && m.start === "11:35" },
+  { id: "mwf-4", label: "MWF 12:55 PM", test: m => meetingIsMWF(m) && m.start === "12:55" },
+  { id: "mwf-5", label: "MWF 2:15 PM",  test: m => meetingIsMWF(m) && m.start === "14:15" },
+  { id: "tr-a",  label: "TR 7:30 AM",   test: m => meetingIsTR(m)  && m.start === "07:30" },
+  { id: "tr-b",  label: "TR 8:30 AM",   test: m => meetingIsTR(m)  && m.start === "08:30" },
+  { id: "tr-c",  label: "TR 11:15 AM",  test: m => meetingIsTR(m)  && m.start === "11:15" },
+  { id: "tr-d",  label: "TR 1:15 PM",   test: m => meetingIsTR(m)  && m.start === "13:15" },
+  { id: "evening", label: "Evening (after 5 PM)", test: m => toMin(m.start) >= 17 * 60 },
+];
+const OTHER_SLOT_ID = "other";
+
+function meetingMatchesSlotId(m, slotId) {
+  if (slotId === OTHER_SLOT_ID) return !TIME_SLOTS.some(s => s.test(m));
+  const slot = TIME_SLOTS.find(s => s.id === slotId);
+  return slot ? slot.test(m) : false;
+}
+
+function classMatchesAnySlot(c, slotIds) {
+  if (!c.meetings.length) return false;
+  for (const m of c.meetings) {
+    for (const id of slotIds) {
+      if (meetingMatchesSlotId(m, id)) return true;
+    }
+  }
+  return false;
 }
 
 // --- Finals exam mapping -----------------------------------------------
@@ -197,20 +264,23 @@ function saveSelected() {
 
 function filteredClasses() {
   const q = state.query.trim().toLowerCase();
-  const startAt = state.filterStartAt;
   const out = [];
   for (const c of state.classes) {
-    if (state.filterDept !== "ALL" && c.department !== state.filterDept) continue;
+    if (state.filterDepts.size > 0 && !state.filterDepts.has(c.department)) continue;
     if (state.filterQuad !== "ALL" && quadOf(c) !== state.filterQuad) continue;
-    if (state.filterTag !== "ALL" && !(c.attributes || []).includes(state.filterTag)) continue;
-    if (state.filterCredits !== "ALL" && c.credits !== state.filterCredits) continue;
+    if (state.filterTags.size > 0) {
+      const tags = c.attributes || [];
+      if (!tags.some(t => state.filterTags.has(t))) continue;
+    }
+    if (state.filterCreditBuckets.size > 0) {
+      if (!classMatchesAnyCreditBucket(c, state.filterCreditBuckets)) continue;
+    }
     if (q) {
       const hay = `${c.code} ${c.title} ${c.department}`.toLowerCase();
       if (!hay.includes(q)) continue;
     }
-    if (startAt) {
-      // Class must have at least one meeting that starts exactly at this time.
-      if (!c.meetings.some(m => m.start === startAt)) continue;
+    if (state.filterSlots.size > 0) {
+      if (!classMatchesAnySlot(c, state.filterSlots)) continue;
     }
     if (state.hideTBA && !c.meetings.length) continue;
     out.push(c);
@@ -347,60 +417,123 @@ function blocksWithLayout(blocks) {
 // --- Rendering ---------------------------------------------------------
 
 function renderDeptFilter() {
-  const sel = document.getElementById("dept-filter");
-  const depts = [...new Set(state.classes.map(c => c.department))].sort();
-  const current = sel.value || "ALL";
-  sel.innerHTML = '<option value="ALL">All depts</option>' +
-    depts.map(d => `<option value="${d}">${d}</option>`).join("");
-  sel.value = current;
+  const wrap = document.getElementById("dept-filter");
+  const counts = new Map();
+  for (const c of state.classes) {
+    counts.set(c.department, (counts.get(c.department) || 0) + 1);
+  }
+  const options = [...counts.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([d, n]) => ({ value: d, label: d, count: n }));
+  renderMultiFilter(wrap, options, state.filterDepts, "dept");
+}
+
+// Render a multi-select dropdown into `wrap`. `options` is [{value, label, count}].
+// `selected` is a Set the caller mutates. `singularLabel` ("tag", "start time")
+// is used for the summary text.
+function renderMultiFilter(wrap, options, selected, singularLabel) {
+  const summaryFor = () => {
+    const n = selected.size;
+    if (n === 0) return `Any ${singularLabel}`;
+    if (n === 1) return `${singularLabel}: ${[...selected][0]}`;
+    return `${n} ${singularLabel}s`;
+  };
+  const opts = options.map(o => `
+    <label class="mf-opt">
+      <input type="checkbox" value="${escapeHtml(o.value)}" ${selected.has(o.value) ? "checked" : ""}>
+      <span class="mf-name">${escapeHtml(o.label)}</span>
+      <span class="mf-count">${o.count ?? ""}</span>
+    </label>
+  `).join("");
+  wrap.innerHTML = `
+    <details class="multi-filter">
+      <summary class="multi-filter-btn"><span class="mf-summary-text">${escapeHtml(summaryFor())}</span></summary>
+      <div class="multi-filter-menu">
+        <div class="mf-header">
+          <span>Select multiple</span>
+          <button type="button" class="mf-clear">Clear</button>
+        </div>
+        ${opts}
+      </div>
+    </details>
+  `;
+  const updateSummary = () => {
+    wrap.querySelector(".mf-summary-text").textContent = summaryFor();
+  };
+  wrap.addEventListener("change", e => {
+    if (!e.target.matches('input[type="checkbox"]')) return;
+    const v = e.target.value;
+    if (e.target.checked) selected.add(v);
+    else selected.delete(v);
+    updateSummary();
+    renderResults();
+  });
+  wrap.querySelector(".mf-clear").addEventListener("click", e => {
+    e.preventDefault();
+    if (selected.size === 0) return;
+    selected.clear();
+    wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    updateSummary();
+    renderResults();
+  });
 }
 
 function renderStartTimeFilter() {
-  const sel = document.getElementById("start-filter");
-  // Collect every distinct meeting start time, sort chronologically.
-  const set = new Set();
+  const wrap = document.getElementById("start-filter");
+  // Count how many classes have at least one meeting matching each slot.
+  const counts = new Map();
+  for (const s of TIME_SLOTS) counts.set(s.id, 0);
+  counts.set(OTHER_SLOT_ID, 0);
   for (const c of state.classes) {
-    for (const m of c.meetings) set.add(m.start);
+    if (!c.meetings.length) continue;
+    const matched = new Set();
+    for (const m of c.meetings) {
+      let inAny = false;
+      for (const slot of TIME_SLOTS) {
+        if (slot.test(m)) { matched.add(slot.id); inAny = true; }
+      }
+      if (!inAny) matched.add(OTHER_SLOT_ID);
+    }
+    for (const id of matched) counts.set(id, counts.get(id) + 1);
   }
-  const times = [...set].sort();
-  const current = sel.value || "";
-  sel.innerHTML = '<option value="">Any start time</option>' +
-    times.map(t => `<option value="${t}">${fmtTime12(t)}</option>`).join("");
-  sel.value = current;
+  const options = [
+    ...TIME_SLOTS.map(s => ({ value: s.id, label: s.label, count: counts.get(s.id) })),
+    { value: OTHER_SLOT_ID, label: "Other times", count: counts.get(OTHER_SLOT_ID) },
+  ];
+  renderMultiFilter(wrap, options, state.filterSlots, "time slot");
 }
 
 function renderTagFilter() {
-  const sel = document.getElementById("tag-filter");
+  const wrap = document.getElementById("tag-filter");
   const counts = new Map();
   for (const c of state.classes) {
-    for (const a of c.attributes || []) {
-      counts.set(a, (counts.get(a) || 0) + 1);
-    }
+    for (const a of c.attributes || []) counts.set(a, (counts.get(a) || 0) + 1);
   }
-  const tags = [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  const current = sel.value || "ALL";
-  sel.innerHTML = '<option value="ALL">Any tag</option>' +
-    tags.map(([t, n]) => `<option value="${t}">${t} (${n})</option>`).join("");
-  sel.value = current;
+  const options = [...counts.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([t, n]) => ({ value: t, label: t, count: n }));
+  renderMultiFilter(wrap, options, state.filterTags, "tag");
 }
 
 function renderCreditsFilter() {
-  const sel = document.getElementById("credits-filter");
-  const set = new Set();
+  const wrap = document.getElementById("credits-filter");
+  const counts = new Map();
+  for (const b of CREDIT_BUCKETS) counts.set(b.id, 0);
+  counts.set(OTHER_CREDIT_ID, 0);
   for (const c of state.classes) {
-    if (c.credits) set.add(c.credits);
+    const v = c.credits || "";
+    if (!v) continue;
+    let matched = false;
+    for (const b of CREDIT_BUCKETS) {
+      if (b.test(v)) { counts.set(b.id, counts.get(b.id) + 1); matched = true; break; }
+    }
+    if (!matched) counts.set(OTHER_CREDIT_ID, counts.get(OTHER_CREDIT_ID) + 1);
   }
-  // Sort: numeric simple values first, then ranges.
-  const all = [...set];
-  const simple = all.filter(v => /^\d+(\.\d+)?$/.test(v))
-                    .sort((a, b) => parseFloat(a) - parseFloat(b));
-  const ranges = all.filter(v => !/^\d+(\.\d+)?$/.test(v))
-                    .sort();
-  const current = sel.value || "ALL";
-  sel.innerHTML = '<option value="ALL">Any credits</option>' +
-    simple.map(v => `<option value="${v}">${v} credit${v === "1" ? "" : "s"}</option>`).join("") +
-    ranges.map(v => `<option value="${v}">${v} (variable)</option>`).join("");
-  sel.value = current;
+  const options = [
+    ...CREDIT_BUCKETS.map(b => ({ value: b.id, label: b.label, count: counts.get(b.id) })),
+    { value: OTHER_CREDIT_ID, label: "Other", count: counts.get(OTHER_CREDIT_ID) },
+  ];
+  renderMultiFilter(wrap, options, state.filterCreditBuckets, "credit option");
 }
 
 function renderResults() {
@@ -732,25 +865,23 @@ async function init() {
     state.query = e.target.value;
     renderResults();
   });
-  document.getElementById("dept-filter").addEventListener("change", e => {
-    state.filterDept = e.target.value;
-    renderResults();
-  });
   document.getElementById("quad-filter").addEventListener("change", e => {
     state.filterQuad = e.target.value;
     renderResults();
   });
-  document.getElementById("tag-filter").addEventListener("change", e => {
-    state.filterTag = e.target.value;
-    renderResults();
+  // Close any open multi-filter dropdown when clicking outside or opening another.
+  document.addEventListener("click", e => {
+    document.querySelectorAll(".multi-filter[open]").forEach(d => {
+      if (!d.contains(e.target)) d.open = false;
+    });
   });
-  document.getElementById("credits-filter").addEventListener("change", e => {
-    state.filterCredits = e.target.value;
-    renderResults();
-  });
-  document.getElementById("start-filter").addEventListener("change", e => {
-    state.filterStartAt = e.target.value;
-    renderResults();
+  document.querySelectorAll(".multi-filter-wrap").forEach(wrap => {
+    wrap.addEventListener("toggle", e => {
+      if (!e.target.open) return;
+      document.querySelectorAll(".multi-filter[open]").forEach(d => {
+        if (d !== e.target) d.open = false;
+      });
+    }, true);
   });
   document.getElementById("hide-tba").addEventListener("change", e => {
     state.hideTBA = e.target.checked;
