@@ -52,6 +52,25 @@ html, body {
   font-size: 11px;
   font-weight: 600;
 }
+.term-picker {
+  margin-left: 6px;
+  padding: 2px 8px;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 22px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23ffffff' d='M2 4l3 3 3-3z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+}
+.term-picker option { color: #111; background: #fff; }
 .schedule-summary {
   color: rgba(255, 255, 255, 0.7);
   font-size: 12px;

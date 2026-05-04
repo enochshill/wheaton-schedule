@@ -1,0 +1,64 @@
+{
+  "id": "spring-2026",
+  "label": "Spring 2026",
+  "timezone": "America/Chicago",
+
+  "fullStart":   "2026-01-12",
+  "fullEnd":     "2026-05-01",
+  "aQuadStart":  "2026-01-12",
+  "aQuadEnd":    "2026-03-06",
+  "bQuadStart":  "2026-03-16",
+  "bQuadEnd":    "2026-05-01",
+  "finalsStart": "2026-05-04",
+  "finalsEnd":   "2026-05-07",
+  "finalsDays":  ["M", "T", "W", "R"],
+  "finalsDayLabels": {
+    "M": "Mon · May 4",
+    "T": "Tue · May 5",
+    "W": "Wed · May 6",
+    "R": "Thu · May 7"
+  },
+  "holidays": [
+    "2026-01-19",
+    "2026-03-07",
+    "2026-03-08",
+    "2026-03-09",
+    "2026-03-10",
+    "2026-03-11",
+    "2026-03-12",
+    "2026-03-13",
+    "2026-03-14",
+    "2026-03-15",
+    "2026-04-03"
+  ],
+
+  "periodCodes": [
+    { "code": "1", "days": "MWF", "start": "08:00" },
+    { "code": "2", "days": "MWF", "start": "09:20" },
+    { "code": "3", "days": "MWF", "start": "11:35" },
+    { "code": "4", "days": "MWF", "start": "12:55" },
+    { "code": "5", "days": "MWF", "start": "14:15" },
+    { "code": "6", "days": "MWF", "start": "15:35" },
+    { "code": "7", "days": "MWF", "start": "16:55" },
+    { "code": "A", "days": "TR",  "start": "07:30" },
+    { "code": "B", "days": "TR",  "start": "08:30" },
+    { "code": "C", "days": "TR",  "start": "11:15" },
+    { "code": "D", "days": "TR",  "start": "13:15" },
+    { "code": "E", "days": "TR",  "start": "15:15" }
+  ],
+
+  "examSlots": {
+    "1": { "day": "W", "start": "08:00", "end": "10:00" },
+    "2": { "day": "R", "start": "08:00", "end": "10:00" },
+    "3": { "day": "T", "start": "10:30", "end": "12:30" },
+    "4": { "day": "R", "start": "10:30", "end": "12:30" },
+    "5": { "day": "W", "start": "13:30", "end": "15:30" },
+    "6": { "day": "R", "start": "13:30", "end": "15:30" },
+    "7": { "day": "R", "start": "13:30", "end": "15:30" },
+    "A": { "day": "T", "start": "08:00", "end": "10:00" },
+    "B": { "day": "T", "start": "08:00", "end": "10:00" },
+    "C": { "day": "W", "start": "10:30", "end": "12:30" },
+    "D": { "day": "T", "start": "13:30", "end": "15:30" },
+    "E": { "day": "R", "start": "13:30", "end": "15:30" }
+  }
+}

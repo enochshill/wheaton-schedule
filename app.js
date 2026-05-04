@@ -1,58 +1,31 @@
 // Schedule Builder — single-file ES module.
-// Loads classes.json, runs search/filter, renders the calendar, and detects
-// time conflicts. Selected classes persist to localStorage.
+// Loads a per-semester catalog + config, runs search/filter, renders the
+// calendar, and detects time conflicts. Selected classes persist to
+// localStorage scoped per semester.
 
-const STORAGE_KEY = "schedule.selected";
+const ACTIVE_SEMESTER_KEY = "schedule.activeSemester";
+const LEGACY_STORAGE_KEY = "schedule.selected"; // single-semester predecessor
+const storageKey = (semesterId) => `schedule.selected.${semesterId}`;
+
 const DAYS = ["M", "T", "W", "R", "F"];
 const DAY_LABELS = { M: "Mon", T: "Tue", W: "Wed", R: "Thu", F: "Fri" };
-const FINALS_DAYS = ["M", "T", "W", "R"];
-const FINALS_DAY_LABELS = {
-  M: "Mon · Dec 14",
-  T: "Tue · Dec 15",
-  W: "Wed · Dec 16",
-  R: "Thu · Dec 17",
-};
 const CAL_START_MIN = 8 * 60;     // 8:00 AM
 const CAL_END_MIN = 22 * 60;      // 10:00 PM
 const TOTAL_MIN = CAL_END_MIN - CAL_START_MIN;
 const MAX_RESULTS = 200;
 
-// Standard class periods (PDF "Period Codes" appendix). Class start time +
-// day pattern → period code → finals exam slot.
-const PERIOD_CODES = [
-  { code: "1", days: "MWF", start: "08:00" },
-  { code: "2", days: "MWF", start: "09:20" },
-  { code: "3", days: "MWF", start: "11:35" },
-  { code: "4", days: "MWF", start: "12:55" },
-  { code: "5", days: "MWF", start: "14:15" },
-  { code: "6", days: "MWF", start: "15:35" },
-  { code: "7", days: "MWF", start: "16:55" },
-  { code: "A", days: "TR",  start: "07:30" },
-  { code: "B", days: "TR",  start: "08:30" },
-  { code: "C", days: "TR",  start: "11:15" },
-  { code: "D", days: "TR",  start: "13:15" },
-  { code: "E", days: "TR",  start: "15:15" },
-];
-
-// Finals-week exam slot per period code.
-const EXAM_SLOTS = {
-  "1": { day: "W", start: "08:00", end: "10:00" },
-  "2": { day: "R", start: "08:00", end: "10:00" },
-  "3": { day: "T", start: "10:30", end: "12:30" },
-  "4": { day: "R", start: "10:30", end: "12:30" },
-  "5": { day: "W", start: "13:30", end: "15:30" },
-  // 6, 7, E share Thu 1:30–3:30 (rarely-used slots, combined).
-  "6": { day: "R", start: "13:30", end: "15:30" },
-  "7": { day: "R", start: "13:30", end: "15:30" },
-  // A, B share Tue 8:00–10:00.
-  "A": { day: "T", start: "08:00", end: "10:00" },
-  "B": { day: "T", start: "08:00", end: "10:00" },
-  "C": { day: "W", start: "10:30", end: "12:30" },
-  "D": { day: "T", start: "13:30", end: "15:30" },
-  "E": { day: "R", start: "13:30", end: "15:30" },
-};
+// Per-semester values, populated by applySemesterConfig() after fetching
+// semesters/{id}/config.json. Kept as `let` (instead of const) so the dozen
+// reference sites in render functions can stay unchanged across switches.
+let FINALS_DAYS = ["M", "T", "W", "R"];
+let FINALS_DAY_LABELS = {};
+let PERIOD_CODES = [];
+let EXAM_SLOTS = {};
 
 const state = {
+  semesterId: null,
+  semester: null,           // active semester config object
+  semesterIndex: null,      // semesters/index.json contents
   classes: [],
   byId: new Map(),
   query: "",
@@ -246,9 +219,9 @@ function expandToFinalsBlocks(classes) {
 
 // --- Persistence -------------------------------------------------------
 
-function loadSelected() {
+function loadSelected(semesterId) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(semesterId));
     if (!raw) return new Set();
     return new Set(JSON.parse(raw));
   } catch {
@@ -257,7 +230,21 @@ function loadSelected() {
 }
 
 function saveSelected() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([...state.selectedIds]));
+  if (!state.semesterId) return;
+  localStorage.setItem(storageKey(state.semesterId), JSON.stringify([...state.selectedIds]));
+}
+
+// One-time migration: the original app stored selections under a single
+// global key. Move that into the Fall 2026 namespace if present, then drop
+// the legacy key. Idempotent — safe to call on every boot.
+function migrateLegacyStorage() {
+  const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+  if (!legacy) return;
+  const target = storageKey("fall-2026");
+  if (!localStorage.getItem(target)) {
+    localStorage.setItem(target, legacy);
+  }
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
 }
 
 // --- Filtering ---------------------------------------------------------
@@ -846,21 +833,117 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+// --- Semester loading --------------------------------------------------
+
+const cacheBust = (url) => `${url}${url.includes("?") ? "&" : "?"}v=${Date.now()}`;
+
+async function fetchJson(url) {
+  const resp = await fetch(cacheBust(url), { cache: "no-store" });
+  if (!resp.ok) throw new Error(`${url}: ${resp.status} ${resp.statusText}`);
+  return resp.json();
+}
+
+function applySemesterConfig(cfg) {
+  state.semester = cfg;
+  state.semesterId = cfg.id;
+  PERIOD_CODES = cfg.periodCodes || [];
+  EXAM_SLOTS = cfg.examSlots || {};
+  FINALS_DAYS = cfg.finalsDays || ["M", "T", "W", "R"];
+  FINALS_DAY_LABELS = cfg.finalsDayLabels || {};
+  document.title = `Wheaton Schedule Builder · ${cfg.label}`;
+}
+
+async function loadSemester(semesterId) {
+  const [cfg, classes] = await Promise.all([
+    fetchJson(`semesters/${semesterId}/config.json`),
+    fetchJson(`semesters/${semesterId}/classes.json`),
+  ]);
+  applySemesterConfig(cfg);
+  state.classes = classes;
+  state.byId = new Map(classes.map(c => [c.id, c]));
+  state.selectedIds = loadSelected(semesterId);
+  localStorage.setItem(ACTIVE_SEMESTER_KEY, semesterId);
+}
+
+async function switchSemester(semesterId) {
+  if (semesterId === state.semesterId) return;
+  // Reset filter state — departments/tags differ across semesters and a
+  // stale dept filter would silently zero the result list.
+  state.query = "";
+  state.filterDepts = new Set();
+  state.filterTags = new Set();
+  state.filterCreditBuckets = new Set();
+  state.filterSlots = new Set();
+  state.filterQuad = "ALL";
+  await loadSemester(semesterId);
+  // Reflect cleared filters in the inputs.
+  const queryEl = document.getElementById("query");
+  if (queryEl) queryEl.value = "";
+  const quadEl = document.getElementById("quad-filter");
+  if (quadEl) quadEl.value = "ALL";
+  renderDeptFilter();
+  renderStartTimeFilter();
+  renderTagFilter();
+  renderCreditsFilter();
+  renderAll();
+}
+
+function populateSemesterPicker() {
+  const sel = document.getElementById("semester-picker");
+  if (!sel) return;
+  const list = (state.semesterIndex.semesters || [])
+    .slice()
+    .sort((a, b) => (b.order || 0) - (a.order || 0));
+  sel.innerHTML = list
+    .map(s => `<option value="${escapeHtml(s.id)}"${s.id === state.semesterId ? " selected" : ""}>${escapeHtml(s.label)}</option>`)
+    .join("");
+}
+
+async function handleIcsDownload() {
+  try {
+    const { downloadIcs } = await import(cacheBust("./ics.js"));
+    const selected = [...state.selectedIds].map(id => state.byId.get(id)).filter(Boolean);
+    if (selected.length === 0) {
+      alert("Select at least one class before exporting.");
+      return;
+    }
+    const finalsEvents = [];
+    for (const c of selected) {
+      const info = classExamInfo(c);
+      if (info.kind === "scheduled" || info.kind === "late") {
+        finalsEvents.push({ classId: c.id, code: c.code, title: c.title, ...info });
+      }
+    }
+    downloadIcs(state.semester, selected, finalsEvents, quadOf);
+  } catch (err) {
+    alert(`Failed to build .ics: ${err.message}`);
+    throw err;
+  }
+}
+
 // --- Wire up -----------------------------------------------------------
 
 async function init() {
-  // Cache-bust so old classes.json (before the attributes column was parsed)
-  // doesn't stick around in the browser.
-  const resp = await fetch(`classes.json?v=${Date.now()}`, { cache: "no-store" });
-  state.classes = await resp.json();
-  state.byId = new Map(state.classes.map(c => [c.id, c]));
-  state.selectedIds = loadSelected();
+  migrateLegacyStorage();
+  state.semesterIndex = await fetchJson("semesters/index.json");
+  const stored = localStorage.getItem(ACTIVE_SEMESTER_KEY);
+  const knownIds = new Set((state.semesterIndex.semesters || []).map(s => s.id));
+  const startId = (stored && knownIds.has(stored)) ? stored : state.semesterIndex.default;
+  await loadSemester(startId);
 
+  populateSemesterPicker();
   renderDeptFilter();
   renderStartTimeFilter();
   renderTagFilter();
   renderCreditsFilter();
 
+  document.getElementById("semester-picker").addEventListener("change", e => {
+    switchSemester(e.target.value).catch(err => {
+      alert(`Failed to load semester: ${err.message}`);
+      // Roll the picker back to the still-active semester.
+      e.target.value = state.semesterId;
+    });
+  });
   document.getElementById("query").addEventListener("input", e => {
     state.query = e.target.value;
     renderResults();
@@ -894,6 +977,7 @@ async function init() {
   });
   document.getElementById("clear-btn").addEventListener("click", clearAll);
   document.getElementById("view-toggle").addEventListener("click", toggleView);
+  document.getElementById("ics-btn").addEventListener("click", handleIcsDownload);
 
   updateViewToggleLabel();
   renderAll();
@@ -914,6 +998,6 @@ function updateViewToggleLabel() {
 init().catch(err => {
   document.body.insertAdjacentHTML(
     "afterbegin",
-    `<div style="padding:20px;color:#dc2626">Failed to load classes.json: ${escapeHtml(err.message)}</div>`,
+    `<div style="padding:20px;color:#dc2626">Failed to load schedule data: ${escapeHtml(err.message)}</div>`,
   );
 });

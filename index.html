@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wheaton Schedule Builder · Fall 2026</title>
+  <title>Wheaton Schedule Builder</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
-    <h1>Schedule Builder <span class="term">Fall 2026</span></h1>
+    <h1>Schedule Builder <select id="semester-picker" class="term-picker" aria-label="Semester"></select></h1>
     <span id="schedule-summary" class="schedule-summary"></span>
     <button id="view-toggle" class="clear-btn" type="button">Final exams</button>
+    <button id="ics-btn" class="clear-btn" type="button" title="Download .ics for iPhone, Google Calendar, Outlook">Download .ics</button>
     <button id="clear-btn" class="clear-btn" type="button">Clear all</button>
     <span class="disclaimer">Verify in Banner before registering</span>
   </header>

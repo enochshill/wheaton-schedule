@@ -1,11 +1,16 @@
-"""One-off: convert the Wheaton Fall 2026 Registration Packet PDF -> classes.json.
+"""Convert a Wheaton Registration Packet PDF -> per-semester classes.json.
 
 Run from repo root:
-    python3 tools/pdf_to_json.py
+    python3 tools/pdf_to_json.py --semester fall-2026
+    python3 tools/pdf_to_json.py --semester spring-2026 --input some/other/path.pdf
 
-Reads tools/source.pdf, writes classes.json. Logs unparsed lines to stderr.
+Defaults: --input  tools/sources/{semester}.pdf
+          --output semesters/{semester}/classes.json
+
+Logs unparsed lines to stderr.
 """
 
+import argparse
 import json
 import re
 import sys
@@ -14,8 +19,6 @@ from pathlib import Path
 import pypdf
 
 ROOT = Path(__file__).resolve().parent.parent
-PDF_PATH = ROOT / "tools" / "source.pdf"
-OUT_PATH = ROOT / "classes.json"
 
 TIME_RE = re.compile(
     r"(\d{1,2}:\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}:\d{2})\s*(AM|PM)"
@@ -28,6 +31,8 @@ ROW_PREFIX_RE = re.compile(
     r"(?P<quad>[A-Z0-9]+)\s+"
     r"(?P<rest>.+)$"
 )
+# Header line at the top of each PDF page, e.g. "Fall 2026 Course Schedule".
+TERM_HEADER_RE = re.compile(r"^(?:Fall|Spring|Summer|Winter|J-Term)\s+\d{4}\s+Course Schedule")
 DAY_LETTERS = {"M", "T", "W", "R", "F", "S", "U"}
 ATTR_TOKEN_RE = re.compile(r"^[A-Z]{2,5}$")
 
@@ -202,11 +207,28 @@ def parse_row(line: str) -> dict | None:
     }
 
 
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Convert a Wheaton registration PDF to classes.json.")
+    p.add_argument("--semester", required=True,
+                   help="Semester id, e.g. fall-2026 or spring-2026.")
+    p.add_argument("--input", type=Path, default=None,
+                   help="Source PDF path. Default: tools/sources/{semester}.pdf.")
+    p.add_argument("--output", type=Path, default=None,
+                   help="Output JSON path. Default: semesters/{semester}/classes.json.")
+    return p.parse_args()
+
+
 def main() -> None:
-    if not PDF_PATH.exists():
-        print(f"missing {PDF_PATH}", file=sys.stderr)
+    args = parse_args()
+    pdf_path = args.input or (ROOT / "tools" / "sources" / f"{args.semester}.pdf")
+    out_path = args.output or (ROOT / "semesters" / args.semester / "classes.json")
+
+    if not pdf_path.exists():
+        print(f"missing {pdf_path}", file=sys.stderr)
         sys.exit(1)
-    reader = pypdf.PdfReader(str(PDF_PATH))
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    reader = pypdf.PdfReader(str(pdf_path))
     classes = []
     skipped = 0
     skipped_samples = []
@@ -217,7 +239,7 @@ def main() -> None:
             if not line:
                 continue
             # Skip header/footer/table-header lines.
-            if line.startswith("Fall 2026 Course Schedule"):
+            if TERM_HEADER_RE.match(line):
                 continue
             if line.startswith("For most accurate data"):
                 continue
@@ -238,8 +260,8 @@ def main() -> None:
                 continue
             classes.append(row)
 
-    OUT_PATH.write_text(json.dumps(classes, indent=2))
-    print(f"wrote {len(classes)} classes to {OUT_PATH}")
+    out_path.write_text(json.dumps(classes, indent=2))
+    print(f"wrote {len(classes)} classes to {out_path}")
     print(f"skipped {skipped} CRN-prefixed rows that didn't parse")
     if skipped_samples:
         print("first 10 unparsed:", file=sys.stderr)
