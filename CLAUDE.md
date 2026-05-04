@@ -97,7 +97,10 @@ Non-obvious bits:
 
 1. Drop the registration packet PDF at `tools/sources/{semester}.pdf` (e.g. `spring-2027.pdf`).
 2. Run `python3 tools/pdf_to_json.py --semester spring-2027`.
-3. Hand-build `semesters/spring-2027/config.json` from page 2 of the PDF (look for "CALENDAR OF CLASS SESSIONS"). The Wheaton academic calendar webpage is auth-walled (CAS SSO), so the registration packet is the canonical source.
+3. Hand-build `semesters/spring-2027/config.json` from **two separate sections of the PDF** — never copy another semester's config wholesale, both sections vary per term:
+   - **Page 2** ("CALENDAR OF CLASS SESSIONS") for the date fields: `fullStart`/`fullEnd`, `aQuadStart`/`aQuadEnd`, `bQuadStart`/`bQuadEnd`, `finalsStart`/`finalsEnd`, `finalsDayLabels`, and every campus holiday (each break date listed individually in `holidays[]`).
+   - **Last page** ("FINAL EXAMINATION SCHEDULE") for `examSlots`. The day-of-week mapping is **not stable across semesters** — period 1 lands on Wed in Fall 2026 but Tue in Spring 2026, A/B move from Tue to Thu, etc. Transcribe the grid cell-by-cell from that semester's PDF. (`periodCodes` *is* stable — that table on the same page lists the standard MWF/TR class meeting times and rarely changes.)
+   The Wheaton academic calendar webpage is auth-walled (CAS SSO), so the registration packet is the canonical source for everything.
 4. Add a `{id, label, order}` entry to `semesters/index.json`. `order` is a sortable integer; convention is `YYYYS` where `S` is `1=spring`, `2=fall` (so newer semesters sort first).
 
 ### Responsive layout
