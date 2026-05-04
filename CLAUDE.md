@@ -54,7 +54,7 @@ The app toggles between **weekly** and **finals** view via `state.view`. Most re
 - **Weekly**: 5 day cols (Mon–Fri), shows actual class meetings.
 - **Finals**: 4 day cols (`finalsDayLabels` from the active config — e.g. `Mon · Dec 14`...`Thu · Dec 17` for Fall 2026), shows where each selected class's final exam falls. Driven by the active semester's `periodCodes` + `examSlots`. `classExamInfo(c)` returns one of: `scheduled` (placed on calendar via period code), `late` (once-weekly ≥4 PM, placed at original day/time), `a-quad` (note: last regular class session), `arrange` (off-grid, instructor arranges), `tba` (no meetings).
 
-The finals exam grid is non-obvious — codes 6/7/E share Thu 1:30–3:30, A/B share Tue 8:00–10:00, and Mon has no scheduled period-code exams (only late-afternoon/night once-weekly classes). When making changes, double-check `examSlots` against the last page of the active semester's registration packet PDF.
+The finals exam grid is non-obvious — codes 6/7/E share the same Thu 1:30 slot, A/B share an 8 AM slot, and Monday is reserved for late-afternoon/night once-weekly classes (no period-code exams). The day-of-week mapping is **not stable across semesters**: Wheaton publishes a different exam grid each term (e.g. period 1 lands on Wed in Fall 2026 but Tue in Spring 2026). Always transcribe `examSlots` from the last page of *that* semester's registration packet PDF — never copy from another semester.
 
 ### Quad-aware conflict detection
 
