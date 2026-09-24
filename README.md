@@ -94,3 +94,7 @@ Selected class IDs are JSON-serialized into `localStorage` under the key `schedu
 - **Result cap:** `MAX_RESULTS` (default 200)
 - **Term label:** the `<span class="term">` in `index.html`
 - **New term:** drop in a new `source.pdf`, re-run the converter, update the term label
+
+## assets/
+
+`campus-map.jpg` is the cropped academic-core campus map used by the Load Sheet app's weekly-view and onboarding-packet pages (loaded by URL from raw.githubusercontent.com). Keep the filename stable; those pages reference it directly.
