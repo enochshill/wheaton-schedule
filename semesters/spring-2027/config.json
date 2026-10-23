@@ -2,7 +2,6 @@
   "id": "spring-2027",
   "label": "Spring 2027",
   "timezone": "America/Chicago",
-  "_draft": "Dates verified against the 2026-2032 approved academic calendar. examSlots is empty until the registrar publishes the Spring 2027 FINAL EXAMINATION SCHEDULE; transcribe it then and delete this field.",
   "fullStart": "2027-01-11",
   "fullEnd": "2027-04-30",
   "aQuadStart": "2027-01-11",
@@ -98,5 +97,66 @@
       "start": "15:15"
     }
   ],
-  "examSlots": {}
+  "examSlots": {
+    "1": {
+      "day": "R",
+      "start": "08:00",
+      "end": "10:00"
+    },
+    "2": {
+      "day": "T",
+      "start": "08:00",
+      "end": "10:00"
+    },
+    "3": {
+      "day": "W",
+      "start": "10:30",
+      "end": "12:30"
+    },
+    "4": {
+      "day": "T",
+      "start": "10:30",
+      "end": "12:30"
+    },
+    "5": {
+      "day": "T",
+      "start": "13:30",
+      "end": "15:30"
+    },
+    "6": {
+      "day": "R",
+      "start": "13:30",
+      "end": "15:30"
+    },
+    "7": {
+      "day": "R",
+      "start": "13:30",
+      "end": "15:30"
+    },
+    "A": {
+      "day": "W",
+      "start": "08:00",
+      "end": "10:00"
+    },
+    "B": {
+      "day": "W",
+      "start": "08:00",
+      "end": "10:00"
+    },
+    "C": {
+      "day": "R",
+      "start": "10:30",
+      "end": "12:30"
+    },
+    "D": {
+      "day": "W",
+      "start": "13:30",
+      "end": "15:30"
+    },
+    "E": {
+      "day": "R",
+      "start": "13:30",
+      "end": "15:30"
+    }
+  }
 }
