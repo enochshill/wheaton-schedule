@@ -182,6 +182,8 @@ function classExamInfo(c) {
   const code = classPeriodCode(c);
   if (code) {
     const slot = EXAM_SLOTS[code];
+    // A semester can go live before the registrar publishes its exam grid.
+    if (!slot) return { kind: "pending", code };
     return { kind: "scheduled", code, day: slot.day, startStr: slot.start, endStr: slot.end };
   }
   // Late-afternoon / night once-weekly classes meet at their normal time
@@ -227,6 +229,21 @@ function loadSelected(semesterId) {
   } catch {
     return new Set();
   }
+}
+
+// Ids embed the section number, which the registrar sometimes renumbers after
+// a catalog refresh. The CRN (last id segment) is stable, so re-point stale
+// ids at the class that now carries that CRN.
+function remapSelected(ids, classes) {
+  const byCrn = new Map(classes.map(c => [c.crn, c.id]));
+  const known = new Set(classes.map(c => c.id));
+  const out = new Set();
+  for (const id of ids) {
+    if (known.has(id)) { out.add(id); continue; }
+    const fresh = byCrn.get(id.split("-").pop());
+    if (fresh) out.add(fresh);
+  }
+  return out;
 }
 
 function saveSelected() {
@@ -708,15 +725,17 @@ function renderUnscheduledTray() {
 
   let groups; // [{ label, items: [{c, note}] }]
   if (state.view === "finals") {
-    const aQuad = [], arrange = [], tba = [];
+    const aQuad = [], pending = [], arrange = [], tba = [];
     for (const c of selected) {
       const info = classExamInfo(c);
       if (info.kind === "a-quad") aQuad.push(c);
+      else if (info.kind === "pending") pending.push(c);
       else if (info.kind === "arrange") arrange.push(c);
       else if (info.kind === "tba") tba.push(c);
     }
     groups = [
       { label: "A quad — final on last regular class session", items: aQuad },
+      { label: "Exam time not yet published for this semester", items: pending },
       { label: "Off-grid — arrange with instructor", items: arrange },
       { label: "TBA / unscheduled", items: tba },
     ].filter(g => g.items.length);
@@ -861,7 +880,7 @@ async function loadSemester(semesterId) {
   applySemesterConfig(cfg);
   state.classes = classes;
   state.byId = new Map(classes.map(c => [c.id, c]));
-  state.selectedIds = loadSelected(semesterId);
+  state.selectedIds = remapSelected(loadSelected(semesterId), classes);
   localStorage.setItem(ACTIVE_SEMESTER_KEY, semesterId);
 }
 

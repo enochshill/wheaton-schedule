@@ -1,7 +1,20 @@
 {
-  "default": "fall-2026",
+  "default": "spring-2027",
   "semesters": [
-    { "id": "fall-2026",   "label": "Fall 2026",   "order": 20262 },
-    { "id": "spring-2026", "label": "Spring 2026", "order": 20261 }
+    {
+      "id": "spring-2027",
+      "label": "Spring 2027",
+      "order": 20271
+    },
+    {
+      "id": "fall-2026",
+      "label": "Fall 2026",
+      "order": 20262
+    },
+    {
+      "id": "spring-2026",
+      "label": "Spring 2026",
+      "order": 20261
+    }
   ]
 }

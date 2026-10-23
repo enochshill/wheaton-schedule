@@ -8,3 +8,6 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Raw Ethos pulls (tools/banner_to_json.ps1)
+tools/banner-cache/

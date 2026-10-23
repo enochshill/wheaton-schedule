@@ -10,7 +10,16 @@ Static site, no build step. Serve from the project root:
 python3 -m http.server 8000        # then open http://localhost:8000
 ```
 
-Re-generate a semester's catalog from its registration packet PDF:
+Re-generate a semester's catalog from Banner (primary source — run in your own PowerShell 7.5+ terminal from the repo root; never paste the API key into chat):
+
+```powershell
+pwsh tools/banner_to_json.ps1 -Semester spring-2027 -Refresh   # live pull + convert (~10 min)
+pwsh tools/banner_to_json.ps1 -Semester spring-2027 -Offline   # re-convert from cache only
+# key: $env:ETHOS_API_KEY or %USERPROFILE%\.ethos-key (same key as the loadsheets repo)
+# cache: tools/banner-cache/{semester}/ (gitignored)   output: semesters/{semester}/classes.json
+```
+
+Fallback — re-generate from the registration packet PDF:
 
 ```bash
 # Ubuntu 24.04: system pip is PEP-668 protected, so use a venv.
@@ -26,10 +35,20 @@ There are no tests, lint config, or framework — `app.js` and `ics.js` are load
 
 A pygame-free, framework-free static site for assembling a Wheaton College class schedule. Four layers:
 
-1. **PDF → JSON** (`tools/pdf_to_json.py`). Heuristic parser. Walks every page of the registration packet PDF with `pypdf`, finds rows starting with a 5-digit CRN, and splits each into structured fields using regex (`ROW_PREFIX_RE`, `TIME_RE`). Handles cross-listed (XL) prefixes, variable credit ranges (`2 TO 4`), TBA / hybrid rows with no time block, and trailing attribute tags mixed in with cap and fee numbers. The page-header skip uses `TERM_HEADER_RE` (matches `(Fall|Spring|Summer|Winter|J-Term)\s+\d{4}\s+Course Schedule`) so it works across semesters. Rows that don't parse are counted and the first 10 are dumped to stderr — when the packet format changes, the parser will need updating.
+1. **Banner → JSON** (`tools/banner_to_json.ps1`, primary). Pulls one term from the Ellucian Ethos API (`integrate.elluciancloud.com`; POST the key to `/auth` for a ~5-min bearer token) and converts to the same `classes.json` schema the PDF parser emits, so the app is source-agnostic. The site can't call Ethos itself — it's public on GitHub Pages and the key would leak — so this is an offline, user-run step. Non-obvious bits:
+   - **Term lookup**: `academic-periods` by code (`YYYY01` spring, `YYYY08` fall; pass `-TermCode` otherwise). Sections are filtered by `reportingAcademicPeriod` (the parent term) — quad sections hang off sub-term periods, so `academicPeriod` would miss them.
+   - **Meeting times** come from `instructional-events`, one query per section (the resource 400s on any period filter). Banner's trailing `Z` is decorative — `09:20Z` is 9:20 AM wall-clock; never TZ-convert. Read JSON with `-DateKind String` so PowerShell doesn't auto-shift the datetimes.
+   - **Filter**: keep `status.category` open/pending and `catalogDisplay` ≠ hidden (drops cancelled sections, dissertation hours, CSA/ICP placeholders). Matches the packet's coverage closely (Fall 2026: 1,030 of 1,077 packet CRNs, plus post-print additions).
+   - **Quad** is derived from section dates vs the modal full-term range (A = starts with the term and ends early; B = mirror; else `"1"`). Banner's full-term `endOn` is the last day of *finals*, not of classes.
+   - **Credits**: `min TO max`, or `min OR max` when Banner sets `increment`; section credits fall back to the course's.
+   - **Subjects** are de-spaced (`B EC` → `BEC`) to match packet ids.
+   - **Attributes** map Banner `courseCategories` GUIDs → packet tags via `tools/banner-attributes.json`. Many-to-one by design: the packet collapses OT/NT/CT/FYS/CAP/… into `SHAR` and WRT/ORAL/LANG/… into `COMP`. Umbrella categories (`THEM` Thematic Core, `DVRS`, `GNED`, …) are intentionally unmapped. The script prints any unmapped category with its code/title — add genuinely new gen-ed tags to the map.
+   - For a semester with no `config.json`, writes a **draft** (dates from Banner, mid-term break as holidays, `periodCodes` copied, empty `examSlots`, a `_draft` note) and registers it in `semesters/index.json`.
+
+   **PDF → JSON** (`tools/pdf_to_json.py`, fallback). Heuristic parser. Walks every page of the registration packet PDF with `pypdf`, finds rows starting with a 5-digit CRN, and splits each into structured fields using regex (`ROW_PREFIX_RE`, `TIME_RE`). Handles cross-listed (XL) prefixes, variable credit ranges (`2 TO 4`), TBA / hybrid rows with no time block, and trailing attribute tags mixed in with cap and fee numbers. The page-header skip uses `TERM_HEADER_RE` (matches `(Fall|Spring|Summer|Winter|J-Term)\s+\d{4}\s+Course Schedule`) so it works across semesters. Rows that don't parse are counted and the first 10 are dumped to stderr — when the packet format changes, the parser will need updating.
 
 2. **Per-semester data** (`semesters/{id}/`). Two files per semester:
-   - `classes.json` — parser output. Each class has `id` (synthesized from subj-num-sec-crn), `code`, `department`, `quad` (`"1"`/`"A"`/`"B"`), `meetings: [{days, start, end}]`, `attributes`, `credits`.
+   - `classes.json` — converter output (Banner or PDF). Each class has `id` (synthesized from subj-num-sec-crn), `code`, `department`, `quad` (`"1"`/`"A"`/`"B"`), `meetings: [{days, start, end}]`, `attributes`, `credits`.
    - `config.json` — hand-built from page 2 of the registration packet ("CALENDAR OF CLASS SESSIONS"): `fullStart`/`fullEnd`, `aQuadStart`/`aQuadEnd`, `bQuadStart`/`bQuadEnd`, `finalsStart`/`finalsEnd`, `finalsDays`, `finalsDayLabels`, `holidays[]` (YYYY-MM-DD), plus the `periodCodes` and `examSlots` tables that drive finals placement.
    - `semesters/index.json` is the registry: `default` semester + ordered list `[{id, label, order}]`. Adding a new semester is a data-only change (no JS edit).
 
@@ -45,14 +64,14 @@ A pygame-free, framework-free static site for assembling a Wheaton College class
 - Re-fetches config + classes, calls `applySemesterConfig`, rebuilds filter dropdowns, calls `renderAll()`.
 - Persists the active id under `schedule.activeSemester`.
 
-Selections live under per-semester keys (`schedule.selected.fall-2026`, `schedule.selected.spring-2026`) so they don't bleed. A one-time `migrateLegacyStorage()` runs on every boot to copy any pre-multi-semester `schedule.selected` value into `schedule.selected.fall-2026` and remove the legacy key (idempotent).
+Selections live under per-semester keys (`schedule.selected.fall-2026`, `schedule.selected.spring-2026`) so they don't bleed. On load, `remapSelected()` re-points stale ids by CRN (the last id segment) — a Banner refresh can renumber a section, which changes its id but not its CRN. Note `index.default` only applies to first-time visitors; returning users land on their remembered `schedule.activeSemester`. A one-time `migrateLegacyStorage()` runs on every boot to copy any pre-multi-semester `schedule.selected` value into `schedule.selected.fall-2026` and remove the legacy key (idempotent).
 
 ### Two views
 
 The app toggles between **weekly** and **finals** view via `state.view`. Most render functions branch on this:
 
 - **Weekly**: 5 day cols (Mon–Fri), shows actual class meetings.
-- **Finals**: 4 day cols (`finalsDayLabels` from the active config — e.g. `Mon · Dec 14`...`Thu · Dec 17` for Fall 2026), shows where each selected class's final exam falls. Driven by the active semester's `periodCodes` + `examSlots`. `classExamInfo(c)` returns one of: `scheduled` (placed on calendar via period code), `late` (once-weekly ≥4 PM, placed at original day/time), `a-quad` (note: last regular class session), `arrange` (off-grid, instructor arranges), `tba` (no meetings).
+- **Finals**: 4 day cols (`finalsDayLabels` from the active config — e.g. `Mon · Dec 14`...`Thu · Dec 17` for Fall 2026), shows where each selected class's final exam falls. Driven by the active semester's `periodCodes` + `examSlots`. `classExamInfo(c)` returns one of: `scheduled` (placed on calendar via period code), `late` (once-weekly ≥4 PM, placed at original day/time), `a-quad` (note: last regular class session), `pending` (has a period code but the semester's `examSlots` lacks it — the exam grid isn't published yet), `arrange` (off-grid, instructor arranges), `tba` (no meetings).
 
 The finals exam grid is non-obvious — codes 6/7/E share the same Thu 1:30 slot, A/B share an 8 AM slot, and Monday is reserved for late-afternoon/night once-weekly classes (no period-code exams). The day-of-week mapping is **not stable across semesters**: Wheaton publishes a different exam grid each term (e.g. period 1 lands on Wed in Fall 2026 but Tue in Spring 2026). Always transcribe `examSlots` from the last page of *that* semester's registration packet PDF — never copy from another semester.
 
@@ -95,13 +114,14 @@ Non-obvious bits:
 
 ### Adding a new semester
 
-1. Drop the registration packet PDF at `tools/sources/{semester}.pdf` (e.g. `spring-2027.pdf`).
-2. Run `python3 tools/pdf_to_json.py --semester spring-2027`.
-3. Hand-build `semesters/spring-2027/config.json` from **two separate sections of the PDF** — never copy another semester's config wholesale, both sections vary per term:
+1. Run `pwsh tools/banner_to_json.ps1 -Semester fall-2027` in your own terminal. It writes `classes.json`, a draft `config.json` and the `index.json` entry. Re-run with `-Refresh` any time to pick up registrar changes (the draft config is never overwritten).
+   (PDF fallback: drop the packet at `tools/sources/{semester}.pdf` and run `python3 tools/pdf_to_json.py --semester ...`.)
+2. Finish the draft config. Holidays come from the public **approved academic calendar PDF** (2026–2032 edition: <https://www.wheaton.edu/__data/assets/file/0017/30464/2026-2032CalendarApprovedFeb2026.pdf> — wheaton.edu 403s bot user-agents, so download with a browser UA). Verify the Banner-derived dates against it too. `examSlots` can stay `{}` until the registrar publishes the exam grid — the app shows "Exam time not yet published" — then transcribe it and delete the `_draft` field. Spring 2027 is in exactly this state as of Oct 2026.
+3. Config field sources (when building by hand from the registration packet) — **two separate sections of the PDF**; never copy another semester's config wholesale, both sections vary per term:
    - **Page 2** ("CALENDAR OF CLASS SESSIONS") for the date fields: `fullStart`/`fullEnd`, `aQuadStart`/`aQuadEnd`, `bQuadStart`/`bQuadEnd`, `finalsStart`/`finalsEnd`, `finalsDayLabels`, and every campus holiday (each break date listed individually in `holidays[]`).
    - **Last page** ("FINAL EXAMINATION SCHEDULE") for `examSlots`. The day-of-week mapping is **not stable across semesters** — period 1 lands on Wed in Fall 2026 but Tue in Spring 2026, A/B move from Tue to Thu, etc. Transcribe the grid cell-by-cell from that semester's PDF. (`periodCodes` *is* stable — that table on the same page lists the standard MWF/TR class meeting times and rarely changes.)
-   The Wheaton academic calendar webpage is auth-walled (CAS SSO), so the registration packet is the canonical source for everything.
-4. Add a `{id, label, order}` entry to `semesters/index.json`. `order` is a sortable integer; convention is `YYYYS` where `S` is `1=spring`, `2=fall` (so newer semesters sort first).
+   The Wheaton academic calendar *webpage* is auth-walled (CAS SSO); the approved-calendar PDF above is public.
+4. If not using the Banner script, add a `{id, label, order}` entry to `semesters/index.json`. `order` is a sortable integer; convention is `YYYYS` where `S` is `1=spring`, `2=fall` (so newer semesters sort first).
 
 ### Responsive layout
 
