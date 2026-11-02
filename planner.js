@@ -5,7 +5,7 @@
 // Everything lives in localStorage — no student data leaves the browser.
 
 import {
-  termIdFromLabel, termLabel, termSortKey, nextMainTerm, termForDate,
+  termIdFromLabel, termLabel, termSortKey, nextMainTerm, prevMainTerm, gradTermFromText, termForDate,
   normCode, splitCode, parseCredits, isUpperDivision,
   parseRule, parseChoose, ruleMatches, describeRule, evaluatePlan, isSatisfied, walk,
 } from "./planner-rules.js";
@@ -197,7 +197,7 @@ function offeredSeasons(e) {
 // --- Degree Works import ------------------------------------------------
 //
 // Payload (built by dw-import.js, or planner-demo.json):
-//   { type: "dw-import", version: 1, whatIf, catalogYear,
+//   { type: "dw-import", version: 1, whatIf, catalogYear, expectedGraduation (raw text, see gradTermFromText),
 //     degree: { title, creditsRequired, creditsApplied, upperDivisionRequired, upperDivisionApplied, notes },
 //     blocks: [{ title, creditsRequired, creditsApplied, notes, courses, reqs: [ReqNode] }] }
 //   ReqNode: { label, status: "met"|"inprog"|"needed", stillNeeded, courses: [DwCourse], children: [ReqNode] }
@@ -310,7 +310,13 @@ function importInto(plan, p) {
     plan.dw = { importedAt: new Date().toISOString(), catalogYear: p.catalogYear || "", degree: p.degree || null, demo: !!p.demo };
   }
   plan.blocks.sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind]);
-  if (!plan.startTerm) {
+  // Expected graduation decides the eight terms — classification follows
+  // credits, so AP/dual-credit freshmen read as sophomores. Fall back to
+  // the earliest Degree Works term.
+  const grad = !p.whatIf && gradTermFromText(p.expectedGraduation);
+  if (grad) {
+    plan.startTerm = startFromGrad(grad);
+  } else if (!plan.startTerm) {
     const terms = plan.courses.filter(c => c.term && c.source === "dw").map(c => c.term)
       .filter(t => /^(fall|spring)-/.test(t)).sort((a, b) => termSortKey(a) - termSortKey(b));
     plan.startTerm = terms[0] || null;
@@ -335,6 +341,24 @@ function startTerm() {
   if (state.plan.startTerm) return state.plan.startTerm;
   const cur = state.currentTerm;
   return cur.startsWith("summer") ? `fall-${cur.split("-")[1]}` : cur;
+}
+
+function startFromGrad(grad) {
+  let t = grad;
+  for (let i = 0; i < 7; i++) t = prevMainTerm(t);
+  return t;
+}
+
+// "Spring 2030" -> "May 2030", "Fall 2029" -> "December 2029".
+function gradLabel(id) {
+  const [season, y] = id.split("-");
+  return `${season === "fall" ? "December" : "May"} ${y}`;
+}
+
+function gradTerm() {
+  let t = startTerm();
+  for (let i = 0; i < 7; i++) t = nextMainTerm(t);
+  return t;
 }
 
 // Eight fall/spring terms from the start, the summers between them, and
@@ -431,12 +455,12 @@ function renderHead() {
   const t = creditTotals();
   const sumAll = t.done + t.inprog + t.planned;
   const upperAll = t.upperApplied + t.plannedUpper;
-  const startOpts = [];
+  const gradOpts = [];
   const cy = Number(state.currentTerm.split("-")[1]);
-  for (let y = cy - 5; y <= cy + 1; y++) startOpts.push(`spring-${y}`, `fall-${y}`);
-  const st = startTerm();
-  if (!startOpts.includes(st)) startOpts.push(st);
-  startOpts.sort((a, b) => termSortKey(a) - termSortKey(b));
+  for (let y = cy - 1; y <= cy + 6; y++) gradOpts.push(`spring-${y}`, `fall-${y}`);
+  const gt = gradTerm();
+  if (!gradOpts.includes(gt)) gradOpts.push(gt);
+  gradOpts.sort((a, b) => termSortKey(a) - termSortKey(b));
 
   const dw = state.plan.dw;
   const source = dw
@@ -445,8 +469,8 @@ function renderHead() {
 
   $("plan-head").innerHTML = `
     <div class="ph-row">
-      <label class="ph-start">First semester
-        <select id="start-term">${startOpts.map(id => `<option value="${id}" ${id === st ? "selected" : ""}>${termLabel(id)}</option>`).join("")}</select>
+      <label class="ph-start" title="The eight semesters end here. Set from Degree Works' expected graduation date when it has one.">Graduating
+        <select id="grad-term">${gradOpts.map(id => `<option value="${id}" ${id === gt ? "selected" : ""}>${gradLabel(id)}</option>`).join("")}</select>
       </label>
       <span class="ph-source">${source}</span>
     </div>
@@ -462,8 +486,8 @@ function renderHead() {
         ${progressBar([["seg-done", t.upperApplied], ["seg-planned", t.plannedUpper]], t.upperRequired)}
       </div>
     </div>`;
-  $("start-term").addEventListener("change", (e) => {
-    state.plan.startTerm = e.target.value;
+  $("grad-term").addEventListener("change", (e) => {
+    state.plan.startTerm = startFromGrad(e.target.value);
     savePlan();
     renderAll();
   });

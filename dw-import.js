@@ -186,6 +186,23 @@ function dwBlock(h3) {
   return block;
 }
 
+// The student header's expected graduation date ("Expected graduation
+// date May 2030", label and value often in sibling elements). Searched
+// page-wide — the header sits outside <main>. Must contain a year, so
+// links like "Apply for graduation" don't match. Planner parses the value.
+var GRAD_LABEL = /^(?:expected|exp\.?|anticipated|projected|intended|planned)?\s*grad(?:uation)?(?:\s+(?:date|term|year))?\s*:?\s*(.*\d{4}.*)$/i;
+function dwExpectedGraduation(doc) {
+  var best = null;
+  var els = doc.body.querySelectorAll("div, p, span, li, dt, dd, tr, th, td, label");
+  for (var i = 0; i < els.length; i++) {
+    var t = dwText(els[i]);
+    if (t.length > 80) continue;
+    var m = GRAD_LABEL.exec(t);
+    if (m && (best === null || m[1].length < best.length)) best = m[1];
+  }
+  return best;
+}
+
 function scrapeDegreeWorks(doc) {
   var main = doc.querySelector("main") || doc.body;
   var h3s = Array.prototype.slice.call(main.querySelectorAll("h3"));
@@ -222,6 +239,7 @@ function scrapeDegreeWorks(doc) {
     version: 1,
     whatIf: !!whatIfTab,
     catalogYear: catalogYear,
+    expectedGraduation: dwExpectedGraduation(doc),
     degree: degree,
     blocks: blocks,
   };

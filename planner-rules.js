@@ -34,6 +34,34 @@ export function nextMainTerm(id) {
   return season === "fall" ? `spring-${year + 1}` : `fall-${year}`;
 }
 
+export function prevMainTerm(id) {
+  const [season, year] = splitTerm(id);
+  return season === "spring" ? `fall-${year - 1}` : `spring-${year}`;
+}
+
+// The last fall/spring term of a Degree Works expected graduation value:
+// "May 2030", "05/2030", "05/15/2030", "Spring 2030", "2030-05", or a
+// Banner term code ("203001"). May/August graduates finish in spring,
+// December graduates in fall, January graduates the fall before.
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+export function gradTermFromText(text) {
+  const s = String(text || "").toLowerCase();
+  const byMonth = (m, y) => m === 1 ? `fall-${y - 1}` : m <= 8 ? `spring-${y}` : `fall-${y}`;
+  let m;
+  if ((m = /\b(fall|autumn|spring|summer|winter|j-?term)\s+(\d{4})\b/.exec(s))) {
+    const y = Number(m[2]);
+    return m[1] === "fall" || m[1] === "autumn" ? `fall-${y}` : /^(winter|j)/.test(m[1]) ? `fall-${y - 1}` : `spring-${y}`;
+  }
+  if ((m = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(?:\d{1,2},?\s+)?(\d{4})\b/.exec(s))) {
+    return byMonth(MONTHS.indexOf(m[1]) + 1, Number(m[2]));
+  }
+  if ((m = /\b(\d{1,2})\/(?:\d{1,2}\/)?(\d{4})\b/.exec(s))) return byMonth(Number(m[1]), Number(m[2]));
+  if ((m = /\b(\d{4})-(\d{1,2})\b/.exec(s))) return byMonth(Number(m[2]), Number(m[1]));
+  // Banner term code: YYYY01 spring, YYYY05/06 summer, YYYY08 fall.
+  if ((m = /\b(\d{4})(0[1-9]|1[0-2])\b/.exec(s))) return `${Number(m[2]) >= 8 ? "fall" : "spring"}-${m[1]}`;
+  return null;
+}
+
 // The term a date falls in, for deciding completed / current / future.
 // Fall runs Aug–Dec, spring Jan–May, summer Jun–Jul.
 export function termForDate(d) {

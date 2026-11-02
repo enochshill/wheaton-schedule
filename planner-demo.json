@@ -4,6 +4,7 @@
   "demo": true,
   "whatIf": false,
   "catalogYear": "Academic Year 2025-2026",
+  "expectedGraduation": "May 2029",
   "degree": {
     "title": "Degree in Bachelor of Arts",
     "creditsRequired": 124,
