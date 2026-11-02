@@ -50,7 +50,7 @@ function loadStore() {
     const raw = localStorage.getItem(PLANS_KEY);
     if (raw) {
       const s = JSON.parse(raw);
-      s.plans = (s.plans || []).filter(e => e.plan?.version === PLAN_VERSION).map(e => ({ ...e, plan: { ...emptyPlan(), ...e.plan } }));
+      s.plans = (s.plans || []).filter(e => e.plan?.version === PLAN_VERSION).map(e => ({ ...e, plan: scrubGrades({ ...emptyPlan(), ...e.plan }) }));
       if (s.plans.length) return s;
     }
     const legacy = JSON.parse(localStorage.getItem(LEGACY_PLAN_KEY) || "null");
@@ -64,6 +64,32 @@ function loadStore() {
     const first = newEntry("My plan");
     return { activeId: first.id, plans: [first] };
   }
+}
+
+// Letter grades are never kept: on a shared computer, leftover plans
+// should reveal what a student took, not how they did. Only the codes
+// that carry meaning here survive (TR = transfer, RE/IP = in progress).
+const KEPT_GRADES = /^(TR|RE|IP)$/i;
+function keptGrade(g) {
+  return KEPT_GRADES.test(g || "") ? g.toUpperCase() : "";
+}
+function scrubGrades(plan) {
+  for (const c of plan.courses || []) c.grade = keptGrade(c.grade);
+  return plan;
+}
+
+// "Delete all my data on this computer": drop the stored plans and start
+// over in memory without writing anything back.
+function wipeAll() {
+  try {
+    localStorage.removeItem(PLANS_KEY);
+    localStorage.removeItem(LEGACY_PLAN_KEY);
+  } catch { /* private mode */ }
+  const first = newEntry("My plan");
+  state.store = { activeId: first.id, plans: [first] };
+  state.plan = first.plan;
+  state.collapsed.clear();
+  renderAll();
 }
 
 function activeEntry() {
@@ -203,7 +229,7 @@ function dwCourse(c, courses) {
     courses.set(uid, {
       uid, code, title: c.title || "", credits: parseCredits(c.credits),
       term, termText: c.term || "", quad: "1",
-      status: inprog ? "inprog" : "done", grade: c.grade || "",
+      status: inprog ? "inprog" : "done", grade: keptGrade(c.grade),
       transfer, satisfiedBy: c.satisfiedBy || "", source: "dw",
     });
   }
@@ -939,7 +965,7 @@ function wireImportDialog() {
     try {
       const { name, ...p } = JSON.parse(await file.text());
       if (p?.version !== PLAN_VERSION || !Array.isArray(p.courses)) throw new Error("not a plan");
-      const entry = newEntry(uniqueName(name || file.name.replace(/\.json$/i, "")), { ...emptyPlan(), ...p });
+      const entry = newEntry(uniqueName(name || file.name.replace(/\.json$/i, "")), scrubGrades({ ...emptyPlan(), ...p }));
       state.store.plans.push(entry);
       setActive(entry.id);
       showBanner(`Opened “${entry.name}” from the backup file.`);
@@ -1129,6 +1155,21 @@ function wirePlanMenu() {
     if (!confirm(`Delete “${entry.name}”? This can't be undone (download it first if you might want it back).`)) return;
     state.store.plans = state.store.plans.filter(e => e !== entry);
     setActive(state.store.plans[0].id);
+  });
+  $("pm-wipe").addEventListener("click", () => {
+    done();
+    const n = state.store.plans.length;
+    if (!confirm(`Delete all ${n === 1 ? "planner data" : `${n} plans`}, including imported Degree Works data, from this browser? This can't be undone.`)) return;
+    wipeAll();
+    showBanner("All planner data was deleted from this browser.");
+  });
+  // Another tab wiped the data: drop this tab's copy too, or its next save
+  // would write everything back.
+  window.addEventListener("storage", (e) => {
+    if ((e.key === PLANS_KEY || e.key === null) && e.newValue === null) {
+      wipeAll();
+      showBanner("Planner data was deleted in another tab.");
+    }
   });
   document.addEventListener("click", (e) => { if (menu.open && !menu.contains(e.target)) done(); });
 }

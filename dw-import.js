@@ -83,7 +83,10 @@ function dwDepths(rows) {
 function dwCourseFromCells(tds) {
   var t = tds.map(dwText);
   if (t.length < 5 || !COURSE_CODE.test(t[0])) return null;
-  return { code: t[0], title: t[1], grade: t[2], credits: t[3], term: t[4] };
+  // Letter grades never leave the Degree Works tab; only TR (transfer) and
+  // RE/IP (in progress) are needed.
+  var grade = /^(TR|RE|IP)$/i.test(t[2]) ? t[2] : "";
+  return { code: t[0], title: t[1], grade: grade, credits: t[3], term: t[4] };
 }
 
 // The element wrapping one block: climb from its <h3> while the parent
