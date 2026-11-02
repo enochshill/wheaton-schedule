@@ -1,0 +1,124 @@
+{
+  "type": "dw-import",
+  "version": 1,
+  "demo": true,
+  "whatIf": false,
+  "catalogYear": "Academic Year 2025-2026",
+  "degree": {
+    "title": "Degree in Bachelor of Arts",
+    "creditsRequired": 124,
+    "creditsApplied": 89,
+    "upperDivisionRequired": 36,
+    "upperDivisionApplied": 20,
+    "notes": [
+      "There are two 'Last Residency' requirements: Within the last 60 credits, 30 must be taken at Wheaton. In addition, within the last 21 credits, 12 must be taken at Wheaton.",
+      "The number of credits TAKEN AT WHEATON is 50 credits.",
+      "The number of TRANSFER credits is 39 credits."
+    ]
+  },
+  "blocks": [
+    {
+      "title": "Degree in Bachelor of Arts",
+      "reqs": [
+        { "label": "Minimum Credits Required", "status": "needed", "stillNeeded": "124 credits are required. You currently have 89, including any currently registered courses, you still need 35 more credits." },
+        { "label": "Upper Division Requirement", "status": "needed", "stillNeeded": "Minimum Credits unsatisfied" },
+        { "label": "Application for Degree Required", "status": "needed", "stillNeeded": "You must submit an application for graduation two semesters before you intend to graduate" },
+        { "label": "2.0 GPA requirement met", "status": "met" },
+        { "label": "General Education Requirements", "status": "needed", "stillNeeded": "See Christ at the Core General Education Requirements section" },
+        { "label": "Major Requirements", "status": "needed", "stillNeeded": "See Major in Economics section" }
+      ]
+    },
+    {
+      "title": "Christ at the Core General Education Requirements",
+      "reqs": [
+        { "label": "Competency Requirements", "status": "met", "children": [
+          { "label": "Modern or Classical Language", "status": "met", "courses": [
+            { "code": "SPAN 201", "title": "Intermediate Spanish", "grade": "TR", "credits": "4", "term": "Fall 2025", "satisfiedBy": "SPLG4 - Spanish Language - ADVANCED PLACEMENT" } ] },
+          { "label": "Oral Communication", "status": "met", "courses": [
+            { "code": "COMM 101", "title": "Public Speaking", "grade": "TR", "credits": "3", "term": "Fall 2025", "satisfiedBy": "COMM102 - Public Speaking - TRANSFER" } ] },
+          { "label": "Composition & Rhetoric", "status": "met", "children": [
+            { "label": "First-Year Writing", "status": "met", "courses": [
+              { "code": "ENGW 103", "title": "First-Year Writing", "grade": "TR", "credits": "4", "term": "Fall 2025", "satisfiedBy": "ENG101 - Fnds Writing & Rhetoric - TRANSFER" } ] } ] }
+        ] },
+        { "label": "Shared Core", "status": "needed", "children": [
+          { "label": "Holistic Human Flourishing", "status": "met", "courses": [
+            { "code": "CORE 131", "title": "Holistic Human Flourishing", "grade": "A", "credits": "1", "term": "Fall 2025" } ] },
+          { "label": "First Year Seminar", "status": "met", "courses": [
+            { "code": "CORE 101", "title": "FYS-Soul, Mind, Brain", "grade": "A", "credits": "4", "term": "Fall 2025" } ] },
+          { "label": "Old Testament Requirement", "status": "inprog", "courses": [
+            { "code": "BITH 211", "title": "OT Lit & Interpretation", "grade": "RE", "credits": "(4)", "term": "Fall 2026" } ] },
+          { "label": "New Testament Requirement", "status": "met", "courses": [
+            { "code": "BITH 213", "title": "NT Lit & Interpretation", "grade": "A-", "credits": "4", "term": "Spring 2026" } ] },
+          { "label": "Christian Thought or Theologies of Transformation", "status": "needed",
+            "stillNeeded": "1 Class in BITH 315 or 318 with term >= Summer 2017 or 374 or 376" },
+          { "label": "Advanced Seminar (May overlap with up to two themes)", "status": "needed",
+            "stillNeeded": "4 Credits in CORE 3@" },
+          { "label": "Senior Seminar/Capstone (Shared with major)", "status": "needed",
+            "stillNeeded": "1 Class in ARTH 494 or ECON 492 or ENGR 494 or @ 494" }
+        ] },
+        { "label": "Thematic Core", "status": "needed", "children": [
+          { "label": "Philosophical Investigations", "status": "needed", "stillNeeded": "1 Class in @ @ with attribute = PI" },
+          { "label": "Historical Perspectives", "status": "met", "courses": [
+            { "code": "HIST 102", "title": "Exploring Global Past", "grade": "TR", "credits": "4", "term": "Fall 2025", "satisfiedBy": "WH4 - World History - ADVANCED PLACEMENT" } ] },
+          { "label": "Literary Exploration", "status": "met", "courses": [
+            { "code": "CFM 335", "title": "Teaching the Bible", "grade": "A", "credits": "4", "term": "Spring 2026" } ] },
+          { "label": "Diversity in the U.S.", "status": "needed", "stillNeeded": "1 Class in @ @ with attribute = DUS" },
+          { "label": "Social Inquiry", "status": "met", "courses": [
+            { "code": "PSYC 101", "title": "Introduction to Psychology", "grade": "A", "credits": "4", "term": "Fall 2025" } ] },
+          { "label": "Applied Abstract & Quantitative Reasoning", "status": "met", "courses": [
+            { "code": "MATH 235", "title": "Calculus I", "grade": "TR", "credits": "4", "term": "Fall 2025", "satisfiedBy": "MCAB4 - Mathematics: Calculus AB - ADVANCED PLACEMENT" } ] },
+          { "label": "Scientific Practice", "status": "met", "courses": [
+            { "code": "PHYS 231", "title": "Introductory Physics I", "grade": "A-", "credits": "4", "term": "Fall 2025" } ] },
+          { "label": "Science Issues & Perspectives", "status": "met", "courses": [
+            { "code": "ENVR 1X1", "title": "Env Sci Issues/Perspective", "grade": "TR", "credits": "4", "term": "Fall 2025", "satisfiedBy": "ENVS4 - Environmental Science - ADVANCED PLACEMENT" } ] },
+          { "label": "Global Diversity", "status": "needed", "stillNeeded": "Choose from 1 of the following:", "children": [
+            { "label": "Global Perspectives", "status": "needed", "stillNeeded": "1 Class in @ @ with attribute = GP" },
+            { "label": "Global Perspectives: GPS 231/232", "status": "needed", "stillNeeded": "2 Classes in @ @ with attribute = GPA or attribute = GPB" } ] },
+          { "label": "Visual & Performing Arts", "status": "met", "children": [
+            { "label": "VPA Art Class", "status": "met", "courses": [
+              { "code": "ART 101", "title": "Art Survey", "grade": "A", "credits": "2", "term": "Spring 2026" } ] },
+            { "label": "VPA Music Class", "status": "met", "courses": [
+              { "code": "MUTC 101", "title": "Intro to Music: Read/Analysis", "grade": "A", "credits": "2", "term": "Spring 2026" } ] } ] }
+        ] }
+      ]
+    },
+    {
+      "title": "Major in Economics",
+      "creditsRequired": 39,
+      "creditsApplied": 28,
+      "notes": [
+        "Minimum credits unsatisfied",
+        "A minimum of 17 credits including Senior Seminar (Capstone) must be taken at Wheaton"
+      ],
+      "reqs": [
+        { "label": "Core Courses", "status": "needed", "children": [
+          { "label": "Principles of Microeconomics", "status": "met", "courses": [
+            { "code": "ECON 211", "title": "Principles of Microeconomics", "grade": "A", "credits": "4", "term": "Fall 2025" } ] },
+          { "label": "Principles of Macroeconomics", "status": "met", "courses": [
+            { "code": "ECON 212", "title": "Macroeconomics", "grade": "TR", "credits": "4", "term": "Fall 2025", "satisfiedBy": "ECMA4 - Economics-Macro - ADVANCED PLACEMENT" } ] },
+          { "label": "Statistics", "status": "met", "courses": [
+            { "code": "MATH 163", "title": "Statistics (Transfer)", "grade": "TR", "credits": "4", "term": "Fall 2025", "satisfiedBy": "STAT5 - Statistics - ADVANCED PLACEMENT" } ] },
+          { "label": "Intermediate Macroeconomics", "status": "inprog", "courses": [
+            { "code": "ECON 325", "title": "Intermediate Macroeconomics", "grade": "RE", "credits": "(4)", "term": "Fall 2026" } ] },
+          { "label": "Intermediate Microeconomics", "status": "met", "courses": [
+            { "code": "ECON 326", "title": "Intermediate Microeconomics", "grade": "A", "credits": "4", "term": "Spring 2026" } ] },
+          { "label": "Econometrics for Business and Economics", "status": "inprog", "courses": [
+            { "code": "ECON 375", "title": "Econometrics", "grade": "RE", "credits": "(4)", "term": "Fall 2026" } ] },
+          { "label": "Seminar", "status": "needed", "stillNeeded": "1 Class in ECON 492 with resident = Y" }
+        ] },
+        { "label": "Electives - 12 credits", "status": "needed", "stillNeeded": "12 Credits in ECON 3@ or 4@ or B_EC 496" },
+        { "label": "Calculus I", "status": "met", "courses": [
+          { "code": "MATH 235", "title": "Calculus I", "grade": "TR", "credits": "4", "term": "Fall 2025", "satisfiedBy": "MCAB4 - Mathematics: Calculus AB - ADVANCED PLACEMENT" } ] }
+      ]
+    },
+    {
+      "title": "General Electives",
+      "courses": [
+        { "code": "BIOL 201", "title": "Prin of Biology", "grade": "TR", "credits": "4", "term": "Fall 2025", "satisfiedBy": "BY4 - Biology - ADVANCED PLACEMENT" },
+        { "code": "CFM 223", "title": "Human Dev't & Ministry", "grade": "RE", "credits": "(4)", "term": "Fall 2026" },
+        { "code": "ENGR 101", "title": "Intro to Engineering", "grade": "A", "credits": "1", "term": "Fall 2025" },
+        { "code": "SPAN 439", "title": "Topics in Culture", "grade": "TR", "credits": "4", "term": "Fall 2025", "satisfiedBy": "SPLG4 - Spanish Language - ADVANCED PLACEMENT" }
+      ]
+    }
+  ]
+}

@@ -11,3 +11,6 @@ Thumbs.db
 
 # Raw Ethos pulls (tools/banner_to_json.ps1)
 tools/banner-cache/
+
+# Real Degree Works pages saved for building dw-import.js (student records — never commit)
+tools/private/

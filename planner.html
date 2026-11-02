@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wheaton Four-Year Planner</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="planner.css">
+</head>
+<body class="planner-page">
+  <header class="topbar">
+    <h1>Four-Year Planner <select id="plan-picker" class="term-picker" aria-label="Plan"></select></h1>
+    <details id="plan-menu" class="plan-menu">
+      <summary class="clear-btn">Plans ▾</summary>
+      <div class="plan-menu-list">
+        <div id="plan-updated" class="pm-note"></div>
+        <button type="button" id="pm-new">New plan…</button>
+        <button type="button" id="pm-dup">Duplicate this plan…</button>
+        <button type="button" id="pm-rename">Rename…</button>
+        <hr>
+        <button type="button" id="pm-export" title="A file you can open later, on another computer, or share with your advisor">Download as file</button>
+        <label for="restore-input" class="pm-item">Open a downloaded file…</label>
+        <hr>
+        <button type="button" id="pm-delete" class="pm-danger">Delete this plan…</button>
+      </div>
+    </details>
+    <span id="plan-summary" class="schedule-summary"></span>
+    <a class="clear-btn nav-link" href="index.html">Schedule Builder</a>
+    <button id="import-btn" class="clear-btn" type="button">Import from Degree Works</button>
+    <span class="disclaimer">Unofficial — confirm with Degree Works and your advisor</span>
+  </header>
+
+  <div id="banner" class="banner" role="status" hidden></div>
+
+  <div class="planner">
+    <main class="plan-pane">
+      <div id="plan-head" class="plan-head"></div>
+      <div id="transfer"></div>
+      <div id="years" class="years"></div>
+    </main>
+
+    <aside class="req-pane">
+      <div class="req-pane-head">
+        <h2>Requirements</h2>
+        <label class="checkbox"><input id="unmet-only" type="checkbox"> Unmet only</label>
+      </div>
+      <div class="legend">
+        <span class="lg rs-met"><span class="req-icon"></span>Complete</span>
+        <span class="lg rs-inprog"><span class="req-icon"></span>In progress</span>
+        <span class="lg rs-planned"><span class="req-icon"></span>Planned</span>
+        <span class="lg rs-needed"><span class="req-icon"></span>Needed</span>
+      </div>
+      <div id="reqs" class="reqs"></div>
+    </aside>
+  </div>
+
+  <dialog id="course-dialog" class="dlg dlg-wide">
+    <header class="dlg-head">
+      <h3 id="cd-title">Add a course</h3>
+      <button type="button" class="dlg-x" data-close aria-label="Close">×</button>
+    </header>
+    <p id="cd-rule" class="cd-rule" hidden></p>
+    <div class="cd-controls">
+      <input id="cd-query" type="search" placeholder="Search code, title, or tag (e.g. ECON 3, PI, DUS)…" autocomplete="off">
+      <label>Add to <select id="cd-term"></select></label>
+    </div>
+    <div id="cd-count" class="result-count"></div>
+    <ul id="cd-results" class="cd-results"></ul>
+    <details id="cd-custom" class="cd-custom">
+      <summary>Course not listed?</summary>
+      <form id="cd-custom-form" class="cd-custom-form">
+        <label>Code <input name="code" required placeholder="ECON 4xx"></label>
+        <label>Title <input name="title" placeholder="Economics elective"></label>
+        <label>Credits <input name="credits" type="number" min="0" max="20" step="0.5" value="4"></label>
+        <label>Quad <select name="quad"><option value="1">Full semester</option><option value="A">A quad</option><option value="B">B quad</option></select></label>
+        <label>Tags <input name="tags" placeholder="e.g. PI, DUS"></label>
+        <button type="submit" class="add-btn">Add</button>
+      </form>
+    </details>
+  </dialog>
+
+  <dialog id="edit-dialog" class="dlg">
+    <header class="dlg-head">
+      <h3 id="ed-title"></h3>
+      <button type="button" class="dlg-x" data-close aria-label="Close">×</button>
+    </header>
+    <form id="edit-form" class="edit-form">
+      <label>Term <select name="term"></select></label>
+      <label>Quad <select name="quad"><option value="1">Full semester</option><option value="A">A quad</option><option value="B">B quad</option></select></label>
+      <label>Credits <input name="credits" type="number" min="0" max="20" step="0.5"></label>
+      <p id="ed-counts" class="muted"></p>
+      <div class="dlg-actions">
+        <button type="button" id="ed-remove" class="mini-btn danger">Remove from plan</button>
+        <button type="submit" class="add-btn">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="import-dialog" class="dlg">
+    <header class="dlg-head">
+      <h3>Import from Degree Works</h3>
+      <button type="button" class="dlg-x" data-close aria-label="Close">×</button>
+    </header>
+    <ol class="import-steps">
+      <li>Drag this button to your browser's bookmarks bar (one-time setup):
+        <div class="bm-wrap"><a id="bookmarklet" class="bookmarklet">Send to Planner</a></div>
+        <div class="muted bm-alt">Drag doesn't work? <button type="button" id="bm-copy" class="link-btn">Copy it</button>, then right-click the bookmarks bar → <b>Add page…</b>, name it <i>Send to Planner</i>, and paste into <b>URL</b>.</div>
+      </li>
+      <li>Open Degree Works and sign in as usual. Open your degree audit.</li>
+      <li>Click <b>Send to Planner</b> in your bookmarks bar. This planner opens in a new tab with your courses and requirements.</li>
+    </ol>
+    <p class="muted">Adding a minor or certificate? In Degree Works, run a <b>What-If</b> audit for it, then click <b>Send to Planner</b> again. The new program is added next to your others.</p>
+    <p class="privacy">Your record is copied straight from the Degree Works tab into this one. It is stored only in this browser and is never sent to a server. On a shared computer, use <b>Plans ▾ → Delete</b> when you're done.</p>
+    <div class="dlg-actions">
+      <label class="mini-btn file-btn">Open a downloaded plan<input id="restore-input" type="file" accept="application/json,.json" hidden></label>
+      <button type="button" id="demo-btn" class="mini-btn">Try a demo student</button>
+    </div>
+  </dialog>
+
+  <script type="module">
+    // Cache-bust the app module so refreshes always pick up new code.
+    import(`./planner.js?v=${Date.now()}`);
+  </script>
+</body>
+</html>
