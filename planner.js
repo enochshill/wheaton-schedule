@@ -213,7 +213,9 @@ function blockKind(title) {
   if (/^major/i.test(title)) return "major";
   if (/^minor/i.test(title)) return "minor";
   if (/certificate|fellowship|\bFP\b/i.test(title)) return "cert";
-  if (/elective/i.test(title)) return "electives";
+  // Only Degree Works' catch-all bucket ("General Electives", "General
+  // Electives-CPOS-eligible") — not core/major blocks that say "Elective".
+  if (/^general electives/i.test(title)) return "electives";
   return "other";
 }
 const KIND_ORDER = { degree: 0, core: 1, major: 2, minor: 3, cert: 4, other: 5, electives: 6 };
@@ -689,8 +691,27 @@ function ruleCheckable(rule) {
     [...state.catalog.values()].some(e => e.attributes.has(a))));
 }
 
+// The degree block's credit-count rows are frozen at import time; judge
+// them from the live totals (done + in progress + planned) instead.
+const DEGREE_TOTAL_ROW = /minimum credits|upper division/i;
+
+function creditState(have, applied, inprog, required) {
+  if (applied - inprog >= required) return "met";
+  if (applied >= required) return "inprog";
+  return have >= required ? "planned" : "needed";
+}
+
 function blockState(b) {
-  const states = b.reqs.map(r => state.eval.get(r.id)?.state || r.status).filter(s => s !== "info");
+  let reqs = b.reqs;
+  const extra = [];
+  if (b.kind === "degree") {
+    const t = creditTotals();
+    reqs = reqs.filter(r => !DEGREE_TOTAL_ROW.test(r.label));
+    extra.push(creditState(t.done + t.inprog + t.planned, t.done + t.inprog, t.inprog, t.required));
+    extra.push(t.upperApplied >= t.upperRequired ? "met"
+      : t.upperApplied + t.plannedUpper >= t.upperRequired ? "planned" : "needed");
+  }
+  const states = reqs.map(r => state.eval.get(r.id)?.state || r.status).concat(extra).filter(s => s !== "info");
   if (!states.length) return "info";
   if (states.every(s => s === "met")) return "met";
   if (states.every(s => s === "met" || s === "inprog")) return "inprog";
@@ -700,7 +721,12 @@ function blockState(b) {
 
 function renderReqs() {
   const wrap = $("reqs");
-  const blocks = state.plan.blocks;
+  // General Electives (incl. "CPOS-eligible") isn't a requirement — it's
+  // just Degree Works' bucket for courses that only count toward total
+  // credits, which the Total credits bar already covers.
+  // Kind is re-derived from the title so plans saved under the older,
+  // looser "elective" match still show their core blocks.
+  const blocks = state.plan.blocks.filter(b => blockKind(b.title) !== "electives");
   if (!blocks.length) {
     wrap.innerHTML = `
       <div class="empty-reqs">
@@ -717,19 +743,27 @@ function renderReqs() {
     walk(b.reqs, r => (state.eval.get(r.id)?.planned || []).forEach(u => plannedUids.add(u)));
     const plannedCr = [...plannedUids].reduce((s, u) => s + (state.plan.courses.find(c => c.uid === u)?.credits || 0), 0);
     const meta = [];
-    if (b.creditsRequired != null) meta.push(`${b.creditsRequired} cr required`);
-    if (b.creditsApplied != null) meta.push(`${b.creditsApplied} applied`);
-    if (plannedCr) meta.push(`+${fmtCr(plannedCr)} planned`);
+    if (b.kind === "degree") {
+      // Live totals (same numbers as the bar at the top of the plan), so
+      // planned courses count toward the 124.
+      const t = creditTotals();
+      const have = t.done + t.inprog + t.planned;
+      meta.push(`${t.required} cr required`, `${fmtCr(t.done)} done`);
+      if (t.inprog) meta.push(`${fmtCr(t.inprog)} in progress`);
+      if (t.planned) meta.push(`${fmtCr(t.planned)} planned`);
+      meta.push(have < t.required ? `<b>${fmtCr(t.required - have)} to plan</b>` : `${fmtCr(have)} total`);
+    } else {
+      if (b.creditsRequired != null) meta.push(`${b.creditsRequired} cr required`);
+      if (b.creditsApplied != null) meta.push(`${b.creditsApplied} applied`);
+      if (plannedCr) meta.push(`+${fmtCr(plannedCr)} planned`);
+    }
     let body;
     if (b.kind === "degree") {
-      // Credit totals are the bars at the top of the plan; the "See …
-      // section" rows just point at the other blocks.
-      const rows = b.reqs.filter(r => !/^see\s/i.test(r.stillNeeded) && !/minimum credits|upper division/i.test(r.label));
+      // Credit totals are in the meta line above (and the bars at the top
+      // of the plan); the "See … section" rows just point at other blocks.
+      const rows = b.reqs.filter(r => !/^see\s/i.test(r.stillNeeded) && !DEGREE_TOTAL_ROW.test(r.label));
       body = rows.map(r => reqNode(r, 0)).join("")
         + (state.plan.dw?.degree?.notes || []).map(n => `<p class="block-note">${escapeHtml(n)}</p>`).join("");
-    } else if (b.kind === "electives") {
-      const list = b.courseUids.map(u => state.plan.courses.find(c => c.uid === u)).filter(Boolean);
-      body = `<div class="req-courses">${list.map(c => `<span class="rc rc-${c.status}" data-uid="${escapeHtml(c.uid)}" title="${escapeHtml(c.title)}">${escapeHtml(c.code)}</span>`).join("")}</div>`;
     } else {
       body = b.notes.map(n => `<p class="block-note">${escapeHtml(n)}</p>`).join("") + b.reqs.map(r => reqNode(r, 0)).join("");
     }
@@ -738,7 +772,7 @@ function renderReqs() {
         <header class="block-head" data-action="toggle-block" data-block="${escapeHtml(b.id)}">
           <span class="req-icon"></span>
           <span class="block-title">${escapeHtml(b.title)}</span>
-          <span class="kind kind-${b.kind}">${b.whatIf ? "What-If · " : ""}${KIND_LABEL[b.kind]}</span>
+          <span class="kind kind-${blockKind(b.title)}">${b.whatIf ? "What-If · " : ""}${KIND_LABEL[blockKind(b.title)]}</span>
           ${b.whatIf ? `<button type="button" class="rc-x" data-action="remove-block" data-block="${escapeHtml(b.id)}" title="Remove this program">×</button>` : ""}
         </header>
         ${meta.length ? `<div class="block-meta">${meta.join(" · ")}</div>` : ""}
